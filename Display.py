@@ -75,16 +75,27 @@ class Display:
         ########## adjust all subplots to make room for buttons
         self.fig.subplots_adjust(left = 0.15, bottom = 0.2, wspace = 0.1)
 
+        ### placing reset button
+        axbutton_reset = plt.axes([0.01, 0.90, 0.08, 0.05])
+        self.button_reset = Button(axbutton_reset, 'Reset')
+        self.button_reset.on_clicked(self.reset)
+
         ### placing differentiation button
-        axbutton_dif = plt.axes([0.01, 0.75, 0.08, 0.05])
+        axbutton_dif = plt.axes([0.01, 0.60, 0.08, 0.05])
         self.button_dif = Button(axbutton_dif, 'Differentiate')
         self.button_dif.on_clicked(self.differentiate)
 
         ### placing down text box to choose plot for manipulation
-        axtext_subnum = plt.axes([0.03, 0.85, 0.06, 0.05])
+        axtext_subnum = plt.axes([0.03, 0.80, 0.06, 0.05])
         self.text_subnum = TextBox(axtext_subnum, 'Plot:', 
             initial = '0')
         self.text_subnum.on_submit(self.Num_change)
+
+        ### text box for trimming data
+        axtext_trim = plt.axes([0.03, 0.70, 0.06, 0.05])
+        self.text_trim = TextBox(axtext_trim, 'Trim:',
+            initial = '0,end')
+        self.text_trim.on_submit(self.trim)
        
 
 
@@ -112,19 +123,36 @@ class Display:
         else:
              print('Data not found for plot')
 
+    ### functions used for buttons
+    def reset(self, event):
+        """
+        function to restore adjusted data back to the raw original
+        """
+
+        self.data[self.Num].reset()
+
+        ### clear data from figure
+        self.subplots[self.Num].cla()
+        ### append subplot with new data 
+        self.subplot_data(plot_num = self.Num)
+
+
     def differentiate(self, event):
         """
         fucntion to differentiate specified data set
         """
         plot_num = int(self.Num)
 
+        ### computer derivitive
         self.data[plot_num].differentiate()
+        ###plot differentiated data
         self.lines[plot_num][0].set_ydata(
             self.data[plot_num].data_adjusted)
         self.set_ylimits(
             self.data[plot_num].data_adjusted, self.subplots[plot_num]) 
 
 
+    ### functions used for text box entries
     def Num_change(self, text):
         """
         method to change Num which tells the plot to be manipulated
@@ -132,7 +160,34 @@ class Display:
         plot_number = text
         self.Num = int(plot_number)
         print(self.Num)
- 
+
+    def trim(self, text):
+        """
+        method to specify a range of data to work with, trim off other parts
+        """
+        x_span = text.split(',')
+        
+        ### make sure input correct length
+        if len(x_span) != 2: print('please enter "start,stop"')
+
+        ## pull out starting value
+        x_start = int(x_span[0])
+
+        ### pull out stop value
+        if x_span[1] == 'end':
+            x_stop = -1
+        else:
+            x_stop = int(x_span[1])
+
+        ### trim the data
+        self.data[self.Num].trim(x_start, x_stop)
+        ### clear data from figure
+        self.subplots[self.Num].cla()
+        ### append subplot with new data 
+        self.subplot_data(plot_num = self.Num)
+
+
+    ### private methods
     def set_ylimits(self, y_data, subplot):
         """
         method to set the ylimits of a specific plot, used after data
@@ -165,8 +220,8 @@ data_anal2 = Analysis(line1**2)
 data_anal3 = Analysis(line1**3)
 data_anal4 = Analysis(line1**4)
 
-###data_test = np.array([data_anal1, data_anal2, data_anal3, data_anal4])
-data_test = np.array([data_anal1, data_anal2])
+data_test = np.array([data_anal1, data_anal2, data_anal3, data_anal4])
+###data_test = np.array([data_anal1, data_anal2])
 
 TestDisplay = Display(data_test)
 TestDisplay.place_buttons()

@@ -32,8 +32,12 @@ class Analysis:
         """ calculates derivitive of the data set """
         self.data_adjusted = np.gradient(self.data_adjusted)
 
-    def integral(self):
+    def integrate(self):
         """ calculates integral of the data set """
         self.data_adjusted = integrate.cumtrapz(self.data_adjusted)
+
+    def trim(self, start, stop):
+        """ trims the data by cutting array at start and stop """
+        self.data_adjusted = self.data_adjusted[start:stop]
 
 
