@@ -40,6 +40,8 @@ class Display:
         if self.NumPlots == 1:
             self.fig, self.subplots = ( 
                 plt.subplots(1,1, figsize = [14.0, 7.0]) )
+            ### need subplots to be in a list
+            self.subplots = [self.subplots]
 
         elif self.NumPlots == 2:
             self.fig, self.subplots = ( 
@@ -144,12 +146,10 @@ class Display:
         plot_num = int(self.Num)
 
         ### computer derivitive
-        self.data[plot_num].differentiate()
-        ###plot differentiated data
-        self.lines[plot_num][0].set_ydata(
-            self.data[plot_num].data_adjusted)
-        self.set_ylimits(
-            self.data[plot_num].data_adjusted, self.subplots[plot_num]) 
+        self.data[self.Num].differentiate()
+
+        self.subplots[self.Num].cla()
+        self.subplot_data(plot_num = self.Num)
 
 
     ### functions used for text box entries
@@ -186,25 +186,6 @@ class Display:
         ### append subplot with new data 
         self.subplot_data(plot_num = self.Num)
 
-
-    ### private methods
-    def set_ylimits(self, y_data, subplot):
-        """
-        method to set the ylimits of a specific plot, used after data
-        has been altered
-        private method
-        """
-        ymin = np.min(y_data)
-        ymax = np.max(y_data)
-        yspan = ymax - ymin
-        ### checking if y is constant
-        if round(ymin, 3) == round(ymax, 3):
-            yspan = ymax
-        ymin = ymin - yspan/10
-        ymax = ymax + yspan/10
-        subplot.set_ylim([ymin, ymax])
-        
-
     def show(self):
         """
         function to display all plots
@@ -220,8 +201,9 @@ data_anal2 = Analysis(line1**2)
 data_anal3 = Analysis(line1**3)
 data_anal4 = Analysis(line1**4)
 
-data_test = np.array([data_anal1, data_anal2, data_anal3, data_anal4])
+##data_test = np.array([data_anal1, data_anal2, data_anal3, data_anal4])
 ###data_test = np.array([data_anal1, data_anal2])
+data_test =  np.array([data_anal1])
 
 TestDisplay = Display(data_test)
 TestDisplay.place_buttons()
