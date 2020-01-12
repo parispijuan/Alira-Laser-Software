@@ -201,9 +201,9 @@ data_anal2 = Analysis(line1**2)
 data_anal3 = Analysis(line1**3)
 data_anal4 = Analysis(line1**4)
 
-##data_test = np.array([data_anal1, data_anal2, data_anal3, data_anal4])
+data_test = np.array([data_anal1, data_anal2, data_anal3, data_anal4])
 ###data_test = np.array([data_anal1, data_anal2])
-data_test =  np.array([data_anal1])
+##data_test =  np.array([data_anal1])
 
 TestDisplay = Display(data_test)
 TestDisplay.place_buttons()
