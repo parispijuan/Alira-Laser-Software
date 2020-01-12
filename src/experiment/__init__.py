@@ -51,12 +51,22 @@ class Experiment:
       assert(len(self.params['time_steps']['values']) == len(v['values']) or len(v['values']) == 0)
 
   def run(self):
-    for i in range(len(params['time_steps']['values'])):
-      time.sleep(params['time_steps']['values'][i])
+    # initial param setup step
+    for param in self.tunable_params:
+        func = self.params[param]['function']
+        value = self.params[param]['values'][0] if len(self.params[param]['values']) != 0 else self.params[param]['default']
+        func(value)
 
-      for param in tunable_params:
+    # every subsequent time step
+    for i in range(1, len(self.params['time_steps']['values'])):
+      time.sleep(self.params['time_steps']['values'][i] - self.params['time_steps']['values'][i-1])
+
+      for param in self.tunable_params:
         func = self.params[param]['function']
         value = self.params[param]['values'][i] if len(self.params[param]['values']) != 0 else self.params[param]['default']
         func(value)
 
+    return True
+
+from .simulator_experiment import SimulatorExperiment
 from .wavelength_experiment import WavelengthExperiment
