@@ -92,6 +92,11 @@ class Display:
         self.button_int = Button(axbutton_int, 'Integrate')
         self.button_int.on_clicked(self.integrate)
 
+        ### placing normalization button
+        axbutton_nor = plt.axes([0.01, 0.40, 0.08, 0.05])
+        self.button_nor = Button(axbutton_nor, 'Normalize')
+        self.button_nor.on_clicked(self.normalize)
+
         ### placing down text box to choose plot for manipulation
         axtext_subnum = plt.axes([0.03, 0.80, 0.06, 0.05])
         self.text_subnum = TextBox(axtext_subnum, 'Plot:', 
@@ -163,7 +168,7 @@ class Display:
 
     def integrate(self, event):
         """
-        fucntion to differentiate specified data set
+        fucntion to integrate specified data set
         """
 
         ### computer derivitive
@@ -171,6 +176,19 @@ class Display:
 
         self.subplots[self.Num].cla()
         self.subplot_data(plot_num = self.Num)
+
+
+    def normalize(self, event):
+        """
+        fucntion to normalize specified data set
+        """
+
+        ### computer derivitive
+        self.data[self.Num].normalize()
+
+        self.subplots[self.Num].cla()
+        self.subplot_data(plot_num = self.Num)
+
 
     ### functions used for text box entries
     def Num_change(self, text):
@@ -180,6 +198,7 @@ class Display:
         plot_number = text
         self.Num = int(plot_number)
         print(self.Num)
+
 
     def trim(self, text):
         """

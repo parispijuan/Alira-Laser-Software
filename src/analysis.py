@@ -40,4 +40,8 @@ class Analysis:
         """ trims the data by cutting array at start and stop """
         self.data_adjusted = self.data_adjusted[start:stop]
 
+    def normalize(self):
+        """ normalizes by dividing by largest element in array """
+        self.data_adjusted = self.data_adjusted/max(self.data_adjusted)
+
 
