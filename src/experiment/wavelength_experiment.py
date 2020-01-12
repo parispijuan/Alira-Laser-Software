@@ -5,7 +5,7 @@ class WavelengthExperiment(Experiment):
   params = {
     'wavelength': {
       'default': 100,
-      'function': laser.set_pulse_wavelength,
+      # TODO: 'function': laser.set_pulse_wavelength,
       'values': [100, 200, 300, 400, 500, 400, 300, 200, 100]
     },
     'time_steps': {
