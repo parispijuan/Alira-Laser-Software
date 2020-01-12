@@ -77,6 +77,7 @@ class Experiment:
   }
 
   tunable_params = ['pulse_width', 'pulse_rate', 'wavelength', 'current', 'scan_resolution']
+  current_time_step = 0
 
   def __init__(self):
     self.setup_laser()
@@ -108,8 +109,9 @@ class Experiment:
 
   def run(self):
     # initial param setup step
+    time.sleep(self.params['time_steps']['values'][0])
     for param in self.tunable_params:
-
+        
         # iterate through pre, action, and post
         for step in self.params[param]['functions']:
           func = self.params[param]['functions'][step]
@@ -119,6 +121,7 @@ class Experiment:
 
     # every subsequent time step
     for i in range(1, len(self.params['time_steps']['values'])):
+      self.current_time_step += 1
       time.sleep(self.params['time_steps']['values'][i] - self.params['time_steps']['values'][i-1])
 
       for param in self.tunable_params:
@@ -127,7 +130,7 @@ class Experiment:
         for step in self.params[param]['functions']:
           func = self.params[param]['functions'][step]
           if not func is None:
-            value = self.params[param]['values'][step][0] if len(self.params[param]['values'][step]) != 0 else self.params[param]['default']
+            value = self.params[param]['values'][step][i] if len(self.params[param]['values'][step]) != 0 else self.params[param]['default']
             func(value)
 
     return True

@@ -20,7 +20,6 @@ class Testing(unittest.TestCase):
         }
       })
 
-      print(exp.params)
       assert exp.params == {
       'pulse_width': {
         'default': 0,
@@ -110,6 +109,9 @@ class Testing(unittest.TestCase):
 
         # make sure expected run time is approprite
         assert end - start > exp.params['time_steps']['values'][-1]
+
+        # test experiment output
+        assert sum(exp.results) == sum([a*b for a,b in zip(exp.params['wavelength']['values']['action'], exp.params['wavelength']['values']['post_action'])])
 
 if __name__ == '__main__':
     unittest.main()
