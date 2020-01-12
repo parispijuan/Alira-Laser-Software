@@ -22,9 +22,11 @@ Software Scope:
         4. Determine Extinction Coefficient
         5. Determine Cavity Loss
     The second mode is a data sandbox that loads sets of data and allows
-    manipulation and plot generation of that data. 
+    manipulation and plot generation of that data.
 
+## Running Unit Tests
 
+To run all unit tests, run `python -m unittest discover` in the `/src` folder.
 
 Contact: parisb@princeton.edu; parispijuan01@gmail.com
 Repo Website: https://github.com/parispijuan/Alira-Laser-Software
