@@ -6,10 +6,14 @@ class SimulatorExperiment(Experiment):
 
     super().__init__()
 
-    self.params.update({
+    self.update_params({
       'wavelength': {
-        'values': [100, 200, 300, 400, 500, 400, 300, 200, 100],
-        'function': self.simulate_output
+        'values': {
+          'action': [100, 200, 300, 400, 500, 400, 300, 200, 100],
+        },
+        'functions': {
+          'action': self.simulate_output
+        }
       },
       'time_steps': {
         'values': [0, 1, 2, 3, 4, 5, 6, 7, 8]
