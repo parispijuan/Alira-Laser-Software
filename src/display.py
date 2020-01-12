@@ -109,6 +109,12 @@ class Display:
             initial = '0,end')
         self.text_trim.on_submit(self.trim)
 
+        ### text box for dividing and finding ratio of data
+        axtext_rato = plt.axes([0.03, 0.30, 0.06, 0.05])
+        self.text_rato = TextBox(axtext_rato, 'Ratio:',
+            initial = '1')
+        self.text_rato.on_submit(self.ratio)
+
         ### text box for saving data
         axtext_save = plt.axes([0.15, 0.10, 0.15, 0.05])
         self.text_save = TextBox(axtext_save, 'Save Adjusted Data (.csv):',
@@ -160,7 +166,7 @@ class Display:
         """
 
         ### computer derivitive
-        self.data[self.num].differentiate()
+        self.data[self.Num].differentiate()
 
         self.subplots[self.Num].cla()
         self.subplot_data(plot_num = self.Num)
@@ -224,6 +230,21 @@ class Display:
         self.subplots[self.Num].cla()
         ### append subplot with new data 
         self.subplot_data(plot_num = self.Num)
+
+
+    def ratio(self, text):
+        """
+        method to divide two data sets, find the ratio 
+        """
+        subtract_number = int(text)
+
+        self.data[self.Num].data_adjusted = np.divide(
+            self.data[self.Num].data_adjusted,
+            self.data[subtract_number].data_adjusted )
+
+        self.subplots[self.Num].cla()
+        self.subplot_data(plot_num = self.Num)
+
 
     def saveData(self, text):
         """
