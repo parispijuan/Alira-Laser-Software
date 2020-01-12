@@ -14,7 +14,7 @@ from matplotlib.widgets import TextBox, Button
 import os
 from datetime import date
 import csv
-from Analysis import *
+from analysis import *
 
 
 class Display:
@@ -87,6 +87,11 @@ class Display:
         self.button_dif = Button(axbutton_dif, 'Differentiate')
         self.button_dif.on_clicked(self.differentiate)
 
+        ### placing integration button
+        axbutton_int = plt.axes([0.01, 0.50, 0.08, 0.05])
+        self.button_int = Button(axbutton_int, 'Integrate')
+        self.button_int.on_clicked(self.integrate)
+
         ### placing down text box to choose plot for manipulation
         axtext_subnum = plt.axes([0.03, 0.80, 0.06, 0.05])
         self.text_subnum = TextBox(axtext_subnum, 'Plot:', 
@@ -98,8 +103,13 @@ class Display:
         self.text_trim = TextBox(axtext_trim, 'Trim:',
             initial = '0,end')
         self.text_trim.on_submit(self.trim)
-       
 
+        ### text box for saving data
+        axtext_save = plt.axes([0.15, 0.10, 0.15, 0.05])
+        self.text_save = TextBox(axtext_save, 'Save Adjusted Data (.csv):',
+            initial = 'DataAdjusted')
+        self.text_save.on_submit(self.saveData)
+ 
 
     def subplot_data(self, plot_num, line_style = '-'):
         """
@@ -143,14 +153,24 @@ class Display:
         """
         fucntion to differentiate specified data set
         """
-        plot_num = int(self.Num)
 
         ### computer derivitive
-        self.data[self.Num].differentiate()
+        self.data[self.num].differentiate()
 
         self.subplots[self.Num].cla()
         self.subplot_data(plot_num = self.Num)
 
+
+    def integrate(self, event):
+        """
+        fucntion to differentiate specified data set
+        """
+
+        ### computer derivitive
+        self.data[self.Num].integrate()
+
+        self.subplots[self.Num].cla()
+        self.subplot_data(plot_num = self.Num)
 
     ### functions used for text box entries
     def Num_change(self, text):
@@ -186,26 +206,37 @@ class Display:
         ### append subplot with new data 
         self.subplot_data(plot_num = self.Num)
 
+    def saveData(self, text):
+        """
+        method to create a folder with the days date. This folder will be used
+        to save specified data into
+        """
+        ### finding the date and making a directory with the date
+        today = date.today()
+        Today_Date = today.strftime("%b_%d_%Y")
+        
+        Date_Directory = os.path.join(Today_Date)
+        ### check if the directory exists, if not create it
+        if os.path.exists(Date_Directory):
+            print(Date_Directory + ' : exists')
+            if os.path.isdir(Date_Directory):
+                print(Date_Directory + ' : is a directory')
+        else:
+            print('no such directory')
+            print('making directory')
+            os.mkdir(Date_Directory)
+
+        SaveName = text
+        save_loc = Date_Directory + '/' + SaveName + '.csv'
+        np.savetxt(
+            save_loc, 
+            self.data[self.Num].data_adjusted, 
+            delimiter = ','
+            )
+
+    ### simple plotting method
     def show(self):
         """
         function to display all plots
         """
         plt.show()
-
-###########################################################################
-###### testing making Display with polynomials
-line1 = np.linspace(-10.5,10.5,500)
-
-data_anal1 = Analysis(line1)
-data_anal2 = Analysis(line1**2)
-data_anal3 = Analysis(line1**3)
-data_anal4 = Analysis(line1**4)
-
-data_test = np.array([data_anal1, data_anal2, data_anal3, data_anal4])
-###data_test = np.array([data_anal1, data_anal2])
-##data_test =  np.array([data_anal1])
-
-TestDisplay = Display(data_test)
-TestDisplay.place_buttons()
-
-TestDisplay.show()
