@@ -54,6 +54,8 @@ class LaserDriver:
 
         #Timing constants
         self.arm_laser_timeout = 20
+        self.qcl_set_params_timeout = 5
+        self.parameter_timeout = 20
         self.cool_tecs_timeout = 60
         self.cool_tecs_additional = 10
         self.turn_on_laser_timeout = 30
@@ -66,7 +68,6 @@ class LaserDriver:
         self.qcl_temp_c = 17
         self.qcl_current_ma = 1500
         self.qcl_width_ns = 500
-        self.qcl_set_params_timeout = 5
         self.qcl_wavelength = 0
         self.laser_on = False
 
@@ -193,6 +194,34 @@ class LaserDriver:
             time.sleep(1)
         print("QCL Parameters: {}".format(
             dict([(k, v.contents.value) for k, v in qcl_params.items()])))
+
+
+    def set_wavelength(self, units, value):
+        ''' Set wavelength of laser emission.
+
+        Arguments:
+            units: Unit for wavelength value being set. Input as an integer corresponding to a unit.
+            value: Wavelength value to be sent to the laser controller to tune to.
+
+        Raises:
+            Laser_Exception: Thrown if the laser cannot tune to the
+
+        '''
+        self.wavelength = value
+        self.wvlen_units = units
+        set_ptr = pointer(c_bool(False))
+        self.sdk.SidekickSDK_SetTuneToWW(self.handle, c_uint8(units), c_float(value), c_uint8(0))
+        self.sdk.SidekickSDK_ExecTuneToWW(self.handle)
+        self.sdk.SidekickSDK_isTuned(self.handle, set_ptr)
+        old_t = time.time()
+        while not set_ptr.contents.value:
+            time.sleep(1)
+            self.sdk.SidekickSDK_ExecTuneToWW(self.handle)
+            self.sdk.SidekickSDK_isTuned(self.handle, set_ptr)
+            curr_t = time.time()
+            if curr_t - old_t > self.parameter_timeout:
+                raise Laser_Exception("Wavelength not tuned.")
+        print("Laser wavelength set successfully.")
 
     def cool_tecs(self):
         '''Wait for TECs to cool to correct temp.
