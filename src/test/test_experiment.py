@@ -1,117 +1,53 @@
 import unittest
-import experiment
-import time
+from experiment import *
+import laser
 
 class Testing(unittest.TestCase):
-    def test_base_constructor(self):
-        exp = experiment.Experiment()
-        assert type(exp) == experiment.Experiment
 
-    def test_params_merge(self):
-      exp = experiment.Experiment()
-      exp.update_params({
-          'current': {
-          'values': {
-            'action': [100, 200, 300, 400, 500, 400, 300, 200, 100],
-          },
-          'functions': {
-            'action': sum
-          }
-        }
-      })
+    def test_experiment_setup(self):
 
-      assert exp.params == {
-      'pulse_width': {
-        'default': 0,
-        'functions': {
-          'pre_action': None,
-          'action': None,
-          'post_action': None
-        },
-        'values': {
-          'pre_action': [],
-          'action': [],
-          'post_action': []
-        }
-      },
-      'pulse_rate': {
-        'default': 0,
-        'functions': {
-          'pre_action': None,
-          'action': None,
-          'post_action': None
-        },
-        'values': {
-          'pre_action': [],
-          'action': [],
-          'post_action': []
-        }
-      },
-      'wavelength': {
-        'default': 0,
-        'functions': {
-          'pre_action': None,
-          'action': None,
-          'post_action': None
-        },
-        'values': {
-          'pre_action': [],
-          'action': [],
-          'post_action': []
-        }
-      },
-      'current': {
-        'default': 0,
-        'functions': {
-          'pre_action': None,
-          'action': sum,
-          'post_action': None
-        },
-        'values': {
-          'pre_action': [],
-          'action': [100, 200, 300, 400, 500, 400, 300, 200, 100],
-          'post_action': []
-        }
-      },
-      'scan_resolution': {
-        'default': 0,
-        'functions': {
-          'pre_action': None,
-          'action': None, # TODO: 'function': laser.set_scan_resolution,
-          'post_action': None
-        },
-        'values': {
-          'pre_action': [],
-          'action': [],
-          'post_action': []
-        }
-      },
-      'time_steps': {
-        'values': []
-      }
-    }
+      class CustomWavelengthAction(WavelengthAction):
 
-    def test_wavelength_constructor(self):
-        exp = experiment.WavelengthExperiment()
-        assert type(exp) == experiment.WavelengthExperiment
+        results = None
 
-    def test_simulator_constructor(self):
-        exp = experiment.SimulatorExperiment()
-        assert type(exp) == experiment.SimulatorExperiment
+        def run(self, current_time):
+          if current_time == 5:
+            self.results = 1337
 
-    def test_simulator_run(self):
-        start = time.time()
-        exp = experiment.SimulatorExperiment()
-        run_complete = exp.run()
-        end = time.time()
+      action = CustomWavelengthAction()
+      foobar_exp = Experiment.builder() \
+        .with_actions([action]) \
+        .with_duration(5) \
+        .build()
+      foobar_exp.run()
 
-        assert run_complete
+      assert action.results ==  1337
 
-        # make sure expected run time is approprite
-        assert end - start > exp.params['time_steps']['values'][-1]
+    def test_laser(self):
 
-        # test experiment output
-        assert sum(exp.results) == sum([a*b for a,b in zip(exp.params['wavelength']['values']['action'], exp.params['wavelength']['values']['post_action'])])
+      class Laser:
+        results = None
+        def set_field(self, field_name, value):
+          self.results = {field_name:value}
+
+      laser.set_for_test(Laser())
+
+      class CustomWavelengthAction(WavelengthAction):
+
+        def run(self, current_time):
+          return current_time
+
+      foobar_exp = Experiment.builder() \
+        .with_actions([CustomWavelengthAction()]) \
+        .with_duration(1) \
+        .build()
+      foobar_exp.run()
+       
+      assert laser.get().results ==  {'wavelength':1}
+
+    def tearDown(self):
+      # Need to destroy singleton instance after every test
+      laser.reset_for_testing()
 
 if __name__ == '__main__':
     unittest.main()
