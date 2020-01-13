@@ -7,6 +7,7 @@ from threading import Thread
 import zhinst
 import zhinst.ziPython
 import zhinst.utils
+import numpy as np
 
 ## Exception class indicating an issue with laser-centric systems.
 class Laser_Exception(Exception):
@@ -525,6 +526,7 @@ class Laser_Driver:
         #   deviation (1D list) to arguments
         #  @param data_list List object to which the data is appended.
         #  @param time_list List object to which the time series for the data is appended.
+        #  @returns 2 numpy arrays, first the observed data and second the corresponding time series.
 
         self.daq.sync()
         self.daq.subscribe('/' + self.device + '/demods/' + self.lockin_demod_c + '/sample')
@@ -545,8 +547,7 @@ class Laser_Driver:
             data = []
             time_axis = []
         self.daq.unsubscribe('*')
-        data_list.append(data)
-        time_list.append(time_axis)
+        return np.array(data), np.array(time_axis)
 
     def __call_sdk_bool(self, sdk_fn, success_msg="Success", error_msg="Failure", *args):
         ## @brief Call SDK function with optional arguments and check return value.
