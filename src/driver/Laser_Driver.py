@@ -1,13 +1,12 @@
 import time
 import os
+import sys
 import platform
 from ctypes import CDLL, pointer, c_uint32, c_uint16, c_uint8, c_bool, c_float, c_char
 from threading import Thread
-import matplotlib.pyplot as plt
 import zhinst
 import zhinst.ziPython
 import zhinst.utils
-import sys
 
 ## Exception class indicating an issue with laser-centric systems.
 class Laser_Exception(Exception):
@@ -48,9 +47,7 @@ class Laser_Driver:
         # @defgroup Timing_Variables
         # Variables for timing of setting parameters. Names indicate function.
         ##@{
-        ## Time allowed for QCL wavelength to be set.
-        self.parameter_timeout = 20
-        ## Time allowed for QCL parameters to be set.
+        ## Time allowed for QCL paramters to be set.
         self.qcl_set_params_timeout = 5
         ## Time allowed for the laser to be armed.
         self.arm_laser_timeout = 20
@@ -72,16 +69,16 @@ class Laser_Driver:
         ##@{
         ## Whether or not the laser is on.
         self.laser_on = False
-        ## Current from the QCL in MilliAmps
-        self.qcl_current_ma = 1500
+        ## Current from the QCL in MilliAmps.
+        self.qcl_current_ma = 0
         ## Pulse rate of the laser in Hertz according to the QCL.
-        self.qcl_pulse_rate_hz = 100000
+        self.qcl_pulse_rate_hz = 0
         ## Pulse width of the laser in nanoseconds according to the QCL.
-        self.qcl_pulse_width_ns = 500
+        self.qcl_pulse_width_ns = 0
         ## Laser wavelength in the units specified by the next parameter.
         self.qcl_wavelength = 0
-        ## Wavelength units, as specified by an integer corresponding to each type of unit. TODO: Need a link here.
-        self.qcl_wvlen_units = c_uint8()
+        ## Wavelength units, as specified by an integer corresponding to each type of unit.
+        self.qcl_wvlen_units = 0
         ## QCL temperature, kept constant. In Degrees Celsius.
         self.qcl_temp = 17
         ###@}
@@ -116,11 +113,11 @@ class Laser_Driver:
         self.demod_rate = 2e3
         ##@}
 
-        #Interaction system constants and objects
+        # Sidekick SDK setup
         self.sidekick_sdk_ret_success = 0
         self.sdk = CDLL(self.sdk_location) if testing_sdk is None else testing_sdk
         self.zi_sdk = zhinst if testing_zi_sdk is None else testing_zi_sdk
-        self._call_sdk_bool(self.sdk.SidekickSDK_Initialize,
+        self.__call_sdk_bool(self.sdk.SidekickSDK_Initialize,
                             'SDK initialization successful', 'Unable to initialize SDK')
         self.handle = None
         self.device = None
@@ -146,14 +143,14 @@ class Laser_Driver:
         self.pref_qcl = c_uint8(0)
         ##@}
 
-    def startup(self, wave, waveunit, current, pulsewid, pulserate):
+    def startup(self, wave, current, pulsewid, pulserate, waveunit = 2):
     ## @brief Attempts to start the laser with the given system parameters.
     #
     #  @param wave Wavelength, units specified by waveunit.
-    #  @param waveunit Integer specifying unit for wavelength (2: Wavenumber).
     #  @param current QCL current in MilliAmps.
     #  @param pulsewid Pulse width in Nanoseconds.
     #  @param pulserate Pulse rate in Hz.
+    #  @param waveunit Integer specifying unit for wavelength. Defaults to 2: wavenumber.
     #  @exceptions QCL_Exception Thrown if errors arrise in this portion of the process.
     #  @exceptions Laser_Exception Thrown if errors arrise in this portion of the process.
     #  @exceptions SDK_Exception Thrown if errors arrise in this portion of the process.
@@ -161,7 +158,7 @@ class Laser_Driver:
         # Set all system parameters to the desired initial values
         self.qcl_wavelength = wave
         self.qcl_wvlen_units = waveunit
-        self.qcl_current_ma_ma = current
+        self.qcl_current_ma = current
         self.qcl_pulse_width_ns = pulsewid
         self.qcl_pulse_rate_hz = pulserate
 
@@ -240,50 +237,41 @@ class Laser_Driver:
                qcl_params['pulse_width_ns_ptr'].contents.value != self.qcl_pulse_width_ns):
             qcl_params = self.__read_qcl_params()
             curr_t = time.time()
-            if curr_t - old_t > self.parameter_timeout:
+            if curr_t - old_t > self.qcl_set_params_timeout:
                 raise QCL_Exception("Laser parameters not set.")
             time.sleep(1)
         sys.stderr.write("Laser parameters have been set successfully.")
 
-
-    def set_wavelength(self, units, value):
-        ## @brief Set wavelength for the laser emission.
+    def set_wavelength(self, value):
+        ## @brief Set wavelength for the laser emission in units stored by the object.
         #
-        #  @param units Integer specifying unit for wavelength (2: Wavenumber).
         #  @param value Wavelength value to which the laser will be tuned.
-        #  @exceptions Laser_Exception Thrown if set_wavelength does not tune the device to the desired value.
 
+        units = self.qcl_wvlen_units
         self.wavelength = value
-        self.wvlen_units = units
-        set_ptr = pointer(c_bool(False))
-        self.sdk.SidekickSDK_SetTuneToWW(self.handle, c_uint8(units), c_float(value), c_uint8(0))
+        set_ptr = pointer(c_bool(True))
+        self.sdk.SidekickSDK_SetTuneToWW(self.handle, c_uint8(2), c_float(value), c_uint8(0))
         self.sdk.SidekickSDK_ExecTuneToWW(self.handle)
-        self.sdk.SidekickSDK_isTuned(self.handle, set_ptr)
-        old_t = time.time()
-        while not set_ptr.contents.value:
-            time.sleep(1)
-            self.sdk.SidekickSDK_ExecTuneToWW(self.handle)
-            self.sdk.SidekickSDK_isTuned(self.handle, set_ptr)
-            curr_t = time.time()
-            if curr_t - old_t > self.parameter_timeout:
-                raise Laser_Exception("Wavelength not tuned.")
-        sys.stderr.write("Laser wavelength set successfully.")
+        time.sleep(20)
+        sys.stderr.write("Laser wavelength tuning to desired value.")
 
-    def wave_step(self, units, start, stop, step_size, dwell_time):
+
+    def wave_step(self, start, stop, step_size, dwell_time, trans_time):
         ## @brief Performs a discrete scan over wavelengths.
         #
         #         Function for taking discrete steps within a range of wavelengths. Other
         #         parameters must be handled manually. Laser is kept on between steps.
-        #  @param units Integer specifying unit for wavelength (2: Wavenumber).
         #  @param start Wavelength to begin the sweep at (in the units supplied).
         #  @param stop Wavelength to cease the sweep at (in the units supplied).
         #  @param step_size Wavelength amount to change the tuning in each step.
         #  @param dwell_time Time spent at each discrete wavelength value (ms).
+        #  @param trans_time Time spent transitioning between different levels.
         #  @exceptions Laser_Exception Thrown if wave_step is not able to perform the scan.
 
+        units = self.qcl_wvlen_units
         write = c_bool(True)
         try:
-            self.set_wavelength(units, start)
+            self.set_wavelength(start)
             time.sleep(5)
             self.sdk.SidekickSDK_SetStepMeasureParams(
                 self.handle, c_uint8(units), c_float(start), c_float(stop), c_float(step_size),
@@ -296,23 +284,22 @@ class Laser_Driver:
             raise Laser_Exception("Discrete wavelength scan has failed.")
         sys.stderr.write("Wavelength scan has been successfully performed.")
 
-    def wave_sweep(self, units, start, stop, speed):
+    def wave_sweep(self, start, stop, speed):
         ## @brief Performs a continuous sweep over wavelengths.
         #
         #   Provides continuous sweeping functionality for the wavelength using the
         #   built-in SDK functions. No other parameters offer functions like this,
         #   as they definitively set their respective values.
-        #  @param units Integer specifying unit for wavelength (2: Wavenumber).
         #  @param start Wavelength to begin the sweep at (in the units supplied).
         #  @param stop Wavelength to cease the sweep at (in the units supplied).
         #  @param speed Speed of the sweep in supplied wavelength units per second.
         #  @exceptions Laser_Exception Thrown if wave_sweep does not correctly perform the wavelength sweep.
-
+        units = self.qcl_wvlen_units
         try:
             write = c_bool(True)
             self.sdk.SidekickSDK_SetSweepParams(self.handle, c_uint8(units), c_float(start), c_float(stop),
-                                c_float(speed), self.scan_count, self.pref_qcl, c_uint8(bidirectional))
-            self.sdk.SideKickSDK_ReadWriteSweepParams(self.handle, write)
+                                c_float(speed), self.scan_count, self.pref_qcl, self.bidirectional_scans)
+            self.sdk.SidekickSDK_ReadWriteSweepParams(self.handle, write)
         except:
             raise Laser_Exception("Wavelength sweep was not correctly performed.")
         sys.stderr.write("Wavelength sweep has concluded successfully.")
@@ -323,6 +310,9 @@ class Laser_Driver:
         #  Scans from start to stop by step_size for the given qcl parameter
         #  (current, pulsewidth, pulserate), dwelling for a specified time at each.
         #  @param param Key within params dictionary of desired QCL parameter.
+        #         options are current (mA): current_ma_ptr
+        #                     pulserate (Hz): pulse_rate_hz_ptr
+        #                     pulsewidth (Ns): pulse_width_ns_ptr
         #  @param start Beginning value of the scan for the QCL parameter.
         #  @param stop Ending value of the scan for the QCL parameter.
         #  @param step_size Step change quantity for the scan.
@@ -340,16 +330,15 @@ class Laser_Driver:
             self.__update_qcl_params(qcl_params)
             set_val += step_size
 
+
     def set_pulsewidth(self, value):
         ## @brief Set pulse width of the laser emission to value.
         #
         #  @param value Desired pulsewidth value in ns.
         #  @exceptions QCL_Exception Thrown if set_pulsewidth doesn't set the parameter within the required time.
 
-    self.qcl_pulse_width_ns = value
-    qcl_params = self.__read_qcl_params()
-    qcl_params['pulse_width_ns_ptr'].contents.value = value
-    self.__set_qcl_params(qcl_params)
+        self.qcl_pulse_width_ns = value
+        self.__set_qcl_params()
 
     def set_pulserate(self, value):
         ## @brief Set pulse rate of the laser emission to value.
@@ -358,9 +347,7 @@ class Laser_Driver:
         #  @exceptions QCL_Exception Thrown if set_pulserate doesn't set the parameter within the required time.
 
         self.qcl_pulse_rate_hz = value
-        qcl_params = self.__read_qcl_params()
-        qcl_params['pulse_rate_hz_ptr'].contents.value = value
-        self.__set_qcl_params(qcl_params)
+        self.__set_qcl_params()
 
     def set_current(self, value):
         ## @brief Set current for the laser emission.
@@ -369,9 +356,7 @@ class Laser_Driver:
         #  @exceptions QCL_Exception Thrown if set_pulserate doesn't set the parameter within the required time.
 
         self.qcl_current_ma = value
-        qcl_params = self.__read_qcl_params()
-        qcl_params['current_ma_ptr'].contents.value = value
-        self.__set_qcl_params(qcl_params)
+        self.__set_qcl_params()
 
     def __cool_tecs(self):
         ## @brief Wait for TECs to cool to correct temp.
