@@ -218,7 +218,7 @@ class Laser_Driver:
             curr_t = time.time()
             if curr_t - old_t > self.arm_laser_timeout:
                 raise Laser_Exception("Laser not armed.")
-        sys.stderr.write("Laser is armed.")
+        sys.stderr.write("Laser is armed.\n")
 
     def __set_qcl_params(self):
         ## @brief Set relevant parameters of the QCL controller.
@@ -241,7 +241,7 @@ class Laser_Driver:
             if curr_t - old_t > self.qcl_set_params_timeout:
                 raise QCL_Exception("Laser parameters not set.")
             time.sleep(1)
-        sys.stderr.write("Laser parameters have been set successfully.")
+        sys.stderr.write("Laser parameters have been set successfully.\n")
 
     def set_wavelength(self, value):
         ## @brief Set wavelength for the laser emission in units stored by the object.
@@ -254,7 +254,7 @@ class Laser_Driver:
         self.sdk.SidekickSDK_SetTuneToWW(self.handle, c_uint8(2), c_float(value), c_uint8(0))
         self.sdk.SidekickSDK_ExecTuneToWW(self.handle)
         time.sleep(20)
-        sys.stderr.write("Laser wavelength tuning to desired value.")
+        sys.stderr.write("Laser wavelength tuning to desired value.\n")
 
 
     def wave_step(self, start, stop, step_size, dwell_time, trans_time):
@@ -284,7 +284,7 @@ class Laser_Driver:
         except:
             raise Laser_Exception("Discrete wavelength scan has failed.")
         self.wavelength = stop
-        sys.stderr.write("Wavelength scan has been successfully performed.")
+        sys.stderr.write("Wavelength scan has been successfully performed.\n")
 
     def wave_sweep(self, start, stop, speed):
         ## @brief Performs a continuous sweep over wavelengths.
@@ -305,7 +305,7 @@ class Laser_Driver:
         except:
             raise Laser_Exception("Wavelength sweep was not correctly performed.")
         self.wavelength = stop
-        sys.stderr.write("Wavelength sweep has concluded successfully.")
+        sys.stderr.write("Wavelength sweep has concluded successfully.\n")
 
     def qcl_param_step(self, param, start, stop, step_size, dwell_time):
         ## @brief Perform a scan over the given qcl parameter.
@@ -385,7 +385,7 @@ class Laser_Driver:
             if curr_t - old_t > self.cool_tecs_timeout:
                 raise Laser_Exception("TECs are not cooled.")
         time.sleep(self.cool_tecs_additional)
-        sys.stderr.write('TECs are at the desired temperature.')
+        sys.stderr.write('TECs are at the desired temperature.\n')
 
     def __turn_on_laser(self):
         ## @brief Turn on the actual laser and begin emitting.
@@ -406,7 +406,7 @@ class Laser_Driver:
             self.sdk.SidekickSDK_ExecLaserOnOff(self.handle)
             self.sdk.SidekickSDK_ReadInfoStatusMask(self.handle)
             self.sdk.SidekickSDK_isLaserFiring(self.handle, is_emitting_ptr)
-            sys.stderr.write("Turn on attempts: {}.".format(attempts))
+            sys.stderr.write("Turn on attempts: {}.\n".format(attempts))
 
             old_t = time.time()
             curr_t = 0
@@ -419,7 +419,7 @@ class Laser_Driver:
                     break
             self.sdk.SidekickSDK_ReadStatusMask(
                 self.handle, status_word_ptr, error_word_ptr, warning_word_ptr)
-            sys.stderr.write('Status Word is {}, Error Word is {}, Warning Word is {}.'.format(
+            sys.stderr.write('Status Word is {}, Error Word is {}, Warning Word is {}.\n'.format(
                 status_word_ptr.contents.value, error_word_ptr.contents.value,
                 warning_word_ptr.contents.value))
 
@@ -431,18 +431,18 @@ class Laser_Driver:
 
         if not is_emitting_ptr.contents.value:
             raise Laser_Exception("Laser did not turn on.")
-        sys.stderr.write("Laser is firing.")
+        sys.stderr.write("Laser is firing.\n")
         self.laser_on = True
 
     def __connect_to_lockin(self):
         ## @brief Connect to lock-in amplifier.
         self.daq = self.zi_sdk.ziPython.ziDAQServer(self.lockin_ip, self.lockin_port)
         self.device = self.zi_sdk.utils.autoDetect(self.daq)
-        sys.stderr.write('Connected to lock-In device {}.'.format(self.device))
+        sys.stderr.write('Connected to lock-In device {}.\n'.format(self.device))
 
     def __initialize_lockin(self):
         ## @brief Initialize lock-in amplifier.
-        sys.stderr.write("Initializing lock-in amp")
+        sys.stderr.write("Initializing lock-in amp.\n")
 
         devtype = self.daq.getByte('/' + self.device + '/features/devtype')
         options = self.daq.getByte('/' + self.device + '/features/options')
@@ -497,7 +497,7 @@ class Laser_Driver:
         self.sdk.SidekickSDK_SetLaserArmDisarm(self.handle, arm)
         self.sdk.SidekickSDK_ExecLaserArmDisarm(self.handle)
         self.sdk.SidekickSDK_Disconnect(self.handle)
-        sys.stderr.write("Laser has been turned off.")
+        sys.stderr.write("Laser has been turned off.\n")
 
     def __read_qcl_params(self):
         ## @brief Read QCL parameters into dictionary.
@@ -551,7 +551,7 @@ class Laser_Driver:
                     clockbase = float(self.daq.getInt('/' + self.device + '/clockbase'))
                     time_axis = sample['timestamp'] / clockbase
                     if sample['time']['dataloss']:
-                        sys.stderr.write('warning: Sample loss detected.')
+                        sys.stderr.write('warning: Sample loss detected.\n')
         else:
             data = []
             time_axis = []
@@ -569,7 +569,7 @@ class Laser_Driver:
 
         ret = sdk_fn() if not args else sdk_fn(*args)
         if ret == self.sidekick_sdk_ret_success:
-            sys.stderr.write(success_msg)
+            sys.stderr.write(success_msg + "\n")
         else:
             raise SDK_Exception(error_msg)
 
@@ -584,7 +584,7 @@ class Laser_Driver:
         ret_ptr = pointer(c_bool(False))
         sdk_fn(self.handle, ret_ptr)
         if ret_ptr.contents.value:
-            sys.stderr.write(success_msg)
+            sys.stderr.write(success_msg + "\n")
         else:
             self.sdk.SidekickSDK_Disconnect(self.handle)
             raise SDK_Exception(error_msg)
