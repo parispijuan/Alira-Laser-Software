@@ -19,7 +19,7 @@ class HardwareException(Exception):
     pass
 
 
-class LaserControl:
+class LaserDriver:
     '''Class interfacing with SDK to control hardware.'''
 
     def __init__(self, testing_sdk=None, testing_zi_sdk=None, sdk_version=None):
@@ -125,33 +125,6 @@ class LaserControl:
         except HardwareException as e:
             self.turn_off_laser()
             raise e
-
-    def run_experiment(self, return_dict=None):
-        '''Main method to run laser scan and get data.
-
-        Arguments:
-          return_dict: optional dictionary for returning data
-
-        Returns:
-          data (TYPE)
-          time_axis (TYPE)
-
-        Raises:
-          HardwareException for fatal errors controlling hardware
-        '''
-        data, time_axis, controller_temp, head_case_temp, pcb_humidity = self.do_step_scanning()
-
-        print(return_dict)
-        print(data)
-        print()
-
-        if return_dict:
-            return_dict["laser_raw_data"] = data
-            return_dict["laser_raw_time"] = time_axis
-            return_dict["sidekick_controller_temp"] = controller_temp
-            return_dict["sidekick_head_case_temp"] = head_case_temp
-            return_dict["sidekick_pcb_humidity"] = pcb_humidity
-        return data, time_axis
 
     def connect_laser(self):
         '''Connect to laser via USB.
@@ -301,19 +274,6 @@ class LaserControl:
 
     def initialize_lockin(self):
         '''Initialize lock-in amplifier.'''
-        # define the output mixer channel based on the device type and its options
-        # if '(UHF' in devtype and 'MF' not in options):
-        #     out_mixer_c = '3'
-        # elif ('hf2is' in devtype and 'MF' not in options):
-        #     out_mixer_c = '6'
-        # elif ('MFLI' in devtype and 'MD' not in options):
-        #     out_mixer_c = '1'
-        # else:
-        #     out_mixer_c = '0'
-
-        # Time constant for the low-pass filter applied to incoming data. If time
-        # constant is low, we "smooth" the data less, which is relevant here. Large
-        # time constants seem to distort the data.
         print("Initializing lock-in amp")
 
         devtype = self.daq.getByte('/' + self.device + '/features/devtype')
@@ -337,17 +297,6 @@ class LaserControl:
         self.daq.setInt('/' + self.device + '/sigins/' + self.lockin_in_c + '/float', 0)
         self.daq.setDouble('/' + self.device + '/sigins/' + self.lockin_in_c + '/range', 2.0)
 
-        # self.daq.setInt('/' + device + '/sigouts/' + self.lockin_out_c + '/on', 0)
-        # self.daq.setDouble('/' + self.device + '/sigouts/' + self.lockin_out_c + '/range', 1)
-        # self.daq.setDouble(
-            # '/' + self.device + '/sigouts/' + self.lockin_out_c + '/amplitudes/*', 0)
-        # self.daq.setDouble('/' + self.device + '/sigouts/' + self.lockin_out_c +
-            # '/amplitudes/' + out_mixer_c, self.lockin_amplitude)
-        # self.daq.setDouble('/' + self.device + '/sigouts/' +
-            # self.lockin_out_c + '/enables/' + out_mixer_c, 1)
-        # if 'HF2' in devtype:
-        #     self.daq.setInt('/' + self.device + '/sigouts/' + self.lockin_out_c + '/add', 0)
-
         self.daq.setDouble('/' + self.device + '/demods/*/phaseshift', 0)
         self.daq.setInt('/' + self.device + '/demods/*/order', 4)
         self.daq.setDouble('/' + self.device + '/demods/' + self.lockin_demod_c + '/rate', self.demod_rate)
@@ -370,83 +319,6 @@ class LaserControl:
         self.daq.unsubscribe('*')
         self.daq.sync()
         time.sleep(10 * self.lockin_time_constant)
-
-    def do_step_scanning(self):
-        '''Run step scan to collect data.'''
-        data = []
-        time_axis = []
-        controller_temp = []
-        head_case_temp = []
-        pcb_humidity = []
-        time_start = time.time()
-
-        # start the scan at a fixed wavelength
-        print("Manually tuning to start wavelength")
-        is_tuned_ptr = pointer(c_bool(False))
-        self.sdk.SidekickSDK_SetTuneToWW(self.handle, self.scan_ww_unit, self.scan_stop_ww, 0)
-        self.sdk.SidekickSDK_ExecTuneToWW(self.handle)
-        time.sleep(5)
-
-
-        # run the scans
-        for s in range(self.num_scan_steps):
-            print('Step Scan Test #{}'.format(s))
-            poll_thread = Thread(target=self._collect_data, args=(data, time_axis), name="poll_thread")
-            poll_thread.start()
-            time.sleep(self.start_delay)
-
-            temp1_ptr = pointer(c_float(0))
-            temp2_ptr = pointer(c_float(0))
-            temp3_ptr = pointer(c_float(0))
-            humidity1_ptr = pointer(c_float(0))
-            humidity2_ptr = pointer(c_float(0))
-            aux_temp1_ptr = pointer(c_float(0))
-            aux_temp2_ptr = pointer(c_float(0))
-            self.sdk.SidekickSDK_ReadInfoSysTemperatures(self.handle)
-            self.sdk.SidekickSDK_GetInfoSysTemperatures(
-                self.handle, temp1_ptr, temp2_ptr, temp3_ptr, humidity1_ptr, humidity2_ptr,
-                aux_temp1_ptr, aux_temp2_ptr)
-            controller_temp.append(temp1_ptr.contents.value)
-            head_case_temp.append(temp2_ptr.contents.value)
-            pcb_humidity.append(humidity1_ptr.contents.value)
-
-            self._step_scan()
-
-            scan_in_progress_ptr = pointer(c_bool(True))
-            progress_mask_ptr = pointer(c_uint8())
-            scan_num_ptr = pointer(c_uint16())
-            scan_percent_ptr = pointer(c_uint16())
-            light_status_ptr = pointer(c_uint8())
-            cur_ww_ptr = pointer(c_char())
-            units_ptr = pointer(c_uint8())
-            cur_qcl_ptr = pointer(c_uint8())
-
-            old_t = time.time()
-            while scan_in_progress_ptr.contents.value:
-                curr_t = time.time()
-                if curr_t - old_t > self.step_scan_timeout:
-                    raise HardwareException("Step scan timeout")
-                self.sdk.SidekickSDK_ReadInfoStatusMask(self.handle)
-                self.sdk.SidekickSDK_isScanningSet(self.handle, scan_in_progress_ptr)
-                self.sdk.SidekickSDK_ReadScanProgress(self.handle)
-                self.sdk.SidekickSDK_GetScanProgress(self.handle, progress_mask_ptr, scan_num_ptr, scan_percent_ptr)
-                self.sdk.SidekickSDK_ReadInfoLight(self.handle)
-                self.sdk.SidekickSDK_GetInfoLight(self.handle, light_status_ptr, cur_ww_ptr, units_ptr, cur_qcl_ptr)
-                print('Prog Mask: {}, ScanNum: {}, ScanPrecent: {}, LightStatus: {}, CurWW: {}, Units: {}'.format(
-                    progress_mask_ptr.contents.value, scan_num_ptr.contents.value, scan_percent_ptr.contents.value,
-                    light_status_ptr.contents.value, cur_ww_ptr.contents.value, units_ptr.contents.value))
-
-                if scan_in_progress_ptr.contents.value:
-                    time.sleep(self.scan_wait)
-
-            poll_thread.join()
-        data_array = np.asarray(data)
-        time_array = np.asarray(time_axis)
-        controller_temp_array = np.asarray(controller_temp)
-        head_case_temp_array = np.asarray(head_case_temp)
-        pcb_humidity_array  = np.asarray(pcb_humidity)
-        normal_time = time_array - time_array[0][0] + time_start
-        return data_array, normal_time, controller_temp_array, head_case_temp_array, pcb_humidity_array
 
     def turn_off_laser(self):
         '''Turn off and disconnect from laser.
@@ -526,16 +398,6 @@ class LaserControl:
         data_list.append(data)
         time_list.append(time_axis)
 
-    def _step_scan(self):
-        '''Execute one step in laser step scan.'''
-        self.sdk.SidekickSDK_SetStepMeasureParams(
-            self.handle, self.scan_ww_unit, self.scan_start_ww, self.scan_stop_ww, self.scan_step,
-            self.scan_num_scans, self.scan_keep_on, self.scan_bidirectional,
-            self.scan_dwell_time_ms, self.scan_trans_time_ms)
-        self.sdk.SidekickSDK_ReadWriteStepMeasureParams(self.handle, self.scan_write)
-        self.sdk.SidekickSDK_SetScanOperation(self.handle, self.scan_operation)
-        self.sdk.SidekickSDK_ExecuteScanOperation(self.handle)
-
     def _call_sdk_bool(self, sdk_fn, success_msg="Success", error_msg="Failure", *args):
         '''Call SDK function with optional arguments and check return value.
 
@@ -572,69 +434,3 @@ class LaserControl:
         else:
             self.sdk.SidekickSDK_Disconnect(self.handle)
             raise HardwareException(error_msg)
-
-    #def _get_lockin_ref(self, device_id):
-    #    device = self.zi_sdk.discoveryFind(daq, device_id).lower()
-    #    props = self.zi_sdk.discoveryFind(daq, device)
-    #    apilevel_example = 5
-    #    self.zi_sdk.connect(daq, 'connect', '192.168.48.102', 8004)
-    #    if device not in self.zi_sdk.devices(daq):
-    #        raise HardwareException('The specified device {} is not visible to the data server. '
-    #                                'Please ensure the device is connected by using the LabOne User '
-    #                                'Interface or ziControl (HF2 Instruments).'.format(device))
-    #    return device
-
-#def is_error(hc):
-#    warning_ptr = pointer(c_bool(False))
-#    error_ptr = pointer(c_bool(False))
-#    hc.sdk.SidekickSDK_isSystemError(hc.handle, error_ptr)
-#    hc.sdk.SidekickSDK_isSystemWarning(hc.handle, warning_ptr)
-#    print("Warning: {}".format(warning_ptr.contents.value))
-#    print("Error: {}".format(error_ptr.contents.value))
-#
-#ERRORS_ARRAY = c_uint16 * 20
-#
-#class ERRORS_WARNINGS_LIST(Structure):
-#    _fields_ = [("status_list", ERRORS_ARRAY),
-#                ("num_items", c_uint16),
-#                ("index", c_uint16)]
-#
-#class ERRORS_WARNINGS(Structure):
-#    _fields_ = [("system_errors", ERRORS_WARNINGS_LIST),
-#                ("system_warnings", ERRORS_WARNINGS_LIST)]
-#
-#def get_errors(hc):
-#    errors = ERRORS_WARNINGS_LIST(ERRORS_ARRAY(), 0, 0)
-#    warnings = ERRORS_WARNINGS_LIST(ERRORS_ARRAY(), 0, 0)
-#    errors_warnings_ptr = pointer(ERRORS_WARNINGS(errors, warnings))
-#    hc.sdk.SidekickSDK_GetInfoSystemErrorsList(hc.handle, errors_warnings_ptr)
-#    print("   ERRORS: ")
-#    print(errors_warnings_ptr.contents.system_errors.num_items)
-#    print("   WARNINGS: ")
-#    print(errors_warnings_ptr.contents.system_warnings.num_items)
-#    print()
-
-def main():
-    '''Runs laser scan and saves data. Calls all other methods in correct sequence.
-
-    Raises:
-      HardwareException for fatal errors controlling hardware
-    '''
-    hc = HardwareControl()
-    try:
-        hc.connect_laser()
-        hc.arm_laser()
-        hc.set_qcl_params()
-        hc.cool_tecs()
-        hc.turn_on_laser()
-        hc.connect_to_lockin()
-        hc.initialize_lockin()
-        data, time_axis = hc.do_step_scanning()
-        plt.plot(data[0])
-        plt.show()
-    finally:
-        hc.turn_off_laser()
-
-
-if __name__ == "__main__":
-    main()
