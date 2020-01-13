@@ -1,7 +1,3 @@
-'''
-Primary software/hardware interface.
-'''
-
 import time
 import os
 import platform
@@ -14,34 +10,31 @@ import zhinst.ziPython
 import zhinst.utils
 import sys
 
+## Exception class indicating an issue with laser-centric systems.
 class Laser_Exception(Exception):
-    '''Exception class indicating an issue having to do with laser hardware'''
     pass
 
+## Exception class indicating an issue with the QCL controller.
 class QCL_Exception(Exception):
-    '''Exception class indicating an issue with the QCL controller.'''
     pass
 
 ## Exception class indicating an issue interacting with or contacting the SDK.
 class SDK_Exception(Exception):
-    '''Exception class indicating an issue interacting with or contacting the SDK.'''
     pass
 
-
-class LaserDriver:
-    '''Class interfacing with SDK to control hardware.'''
-
+## Driver for controlling the Daylight solutions laser through the SideKick SDK,
+#  as well as retrieving data from a reciever set up with the corresponding laser.
+#
+class Laser_Driver:
+    ## Constructor for the driver object. Links with driver C library and SDK to control hardware.
     def __init__(self, testing_sdk=None, testing_zi_sdk=None, sdk_version=None):
-        '''Initialize SDKs and provide hook for testing.
-
-        Arguments:
-          testing_sdk: SideKickSDK library if None, else class with equivalent methods for testing
-          testing_zisdk: ZI library if None, else class with equivalent methods for testing
-          sdk_location: 86 or 64 (which version of Sidekick sdk to load)
-
-        Raises:
-           SDK_Exception if SDK cannot be initialized
-        '''
+        ##
+        # @brief Initialize SDKs and provide hook for testing.
+        #
+        # @param testing_sdk SideKickSDK library if None, else class with equivalent methods for testing.
+        # @param testing_zisdk ZI library if None, else class with equivalent methods for testing.
+        # @param sdk_version 86 or 64 (which version of Sidekick sdk to load).
+        # @exceptions SDK_Exception if SDK cannot be initialized.
 
         if sdk_version == 64:
             self.sdk_location = os.path.join(os.path.dirname(__file__), 'SidekickSDKx64.dll')
