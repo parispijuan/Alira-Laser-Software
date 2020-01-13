@@ -135,8 +135,14 @@ class Laser_Driver:
         self.qcl_read = c_bool(False)
         # Writing requires passing true to readwrite functions.
         self.qcl_write = c_bool(True)
+        # Sets up SIDEKICK_SDK_SCAN_START_STEP_MEASURE as operation.
+        self.scan_operation = c_uint8(7)
+        # Does not permit bidirectional scans.
+        self.bidirectional_scans = c_uint8(0)
         # Performs just a single scan per call.
         self.scan_count = c_uint16(1)
+        # Maintains laser emission between steps.
+        self.keep_on = c_uint8(1)
         # Dummy parameter for function which is meant for non SideKick Projects.
         self.pref_qcl = c_uint8(0)
         ##@}
@@ -262,6 +268,33 @@ class Laser_Driver:
             if curr_t - old_t > self.parameter_timeout:
                 raise Laser_Exception("Wavelength not tuned.")
         sys.stderr.write("Laser wavelength set successfully.")
+
+    def wave_step(self, units, start, stop, step_size, dwell_time):
+        ## @brief Performs a discrete scan over wavelengths.
+        #
+        #         Function for taking discrete steps within a range of wavelengths. Other
+        #         parameters must be handled manually. Laser is kept on between steps.
+        #  @param units Integer specifying unit for wavelength (2: Wavenumber).
+        #  @param start Wavelength to begin the sweep at (in the units supplied).
+        #  @param stop Wavelength to cease the sweep at (in the units supplied).
+        #  @param step_size Wavelength amount to change the tuning in each step.
+        #  @param dwell_time Time spent at each discrete wavelength value (ms).
+        #  @exceptions Laser_Exception Thrown if wave_step is not able to perform the scan.
+
+        write = c_bool(True)
+        try:
+            self.set_wavelength(units, start)
+            time.sleep(5)
+            self.sdk.SidekickSDK_SetStepMeasureParams(
+                self.handle, c_uint8(units), c_float(start), c_float(stop), c_float(step_size),
+                self.scan_count, self.keep_on, self.bidirectional_scans,
+                c_uint32(dwell_time), c_uint32(trans_time))
+            self.sdk.SidekickSDK_ReadWriteStepMeasureParams(self.handle, write)
+            self.sdk.SidekickSDK_SetScanOperation(self.handle, self.scan_operation)
+            self.sdk.SidekickSDK_ExecuteScanOperation(self.handle)
+        except:
+            raise Laser_Exception("Discrete wavelength scan has failed.")
+        sys.stderr.write("Wavelength scan has been successfully performed.")
 
     def wave_sweep(self, units, start, stop, speed):
         ## @brief Performs a continuous sweep over wavelengths.
