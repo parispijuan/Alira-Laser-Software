@@ -192,8 +192,6 @@ class LaserDriver:
             if curr_t - old_t > self.qcl_set_params_timeout:
                 QCL_Exception("Unable to set QCL params")
             time.sleep(1)
-        sys.stderr.write("QCL Parameters: {}".format(
-            dict([(k, v.contents.value) for k, v in qcl_params.items()])))
 
 
     def set_wavelength(self, units, value):
