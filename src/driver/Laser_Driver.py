@@ -77,7 +77,7 @@ class Laser_Driver:
         ## Pulse width of the laser in nanoseconds according to the QCL.
         self.qcl_pulse_width_ns = 0
         ## Laser wavelength in the units specified by the next parameter.
-        self.qcl_wavelength = 0
+        self.wavelength = 0
         ## Wavelength units, as specified by an integer corresponding to each type of unit.
         self.qcl_wvlen_units = 0
         ## QCL temperature, kept constant. In Degrees Celsius.
@@ -157,7 +157,7 @@ class Laser_Driver:
     #  @exceptions SDK_Exception Thrown if errors arrise in this portion of the process.
 
         # Set all system parameters to the desired initial values
-        self.qcl_wavelength = wave
+        self.wavelength = wave
         self.qcl_wvlen_units = waveunit
         self.qcl_current_ma = current
         self.qcl_pulse_width_ns = pulsewid
@@ -262,8 +262,8 @@ class Laser_Driver:
         #
         #         Function for taking discrete steps within a range of wavelengths. Other
         #         parameters must be handled manually. Laser is kept on between steps.
-        #  @param start Wavelength to begin the sweep at (in the units supplied).
-        #  @param stop Wavelength to cease the sweep at (in the units supplied).
+        #  @param start Wavelength to begin the sweep at.
+        #  @param stop Wavelength to cease the sweep at.
         #  @param step_size Wavelength amount to change the tuning in each step.
         #  @param dwell_time Time spent at each discrete wavelength value (ms).
         #  @param trans_time Time spent transitioning between different levels.
@@ -283,6 +283,7 @@ class Laser_Driver:
             self.sdk.SidekickSDK_ExecuteScanOperation(self.handle)
         except:
             raise Laser_Exception("Discrete wavelength scan has failed.")
+        self.wavelength = stop
         sys.stderr.write("Wavelength scan has been successfully performed.")
 
     def wave_sweep(self, start, stop, speed):
@@ -291,8 +292,8 @@ class Laser_Driver:
         #   Provides continuous sweeping functionality for the wavelength using the
         #   built-in SDK functions. No other parameters offer functions like this,
         #   as they definitively set their respective values.
-        #  @param start Wavelength to begin the sweep at (in the units supplied).
-        #  @param stop Wavelength to cease the sweep at (in the units supplied).
+        #  @param start Wavelength to begin the sweep at.
+        #  @param stop Wavelength to cease the sweep at.
         #  @param speed Speed of the sweep in supplied wavelength units per second.
         #  @exceptions Laser_Exception Thrown if wave_sweep does not correctly perform the wavelength sweep.
         units = self.qcl_wvlen_units
@@ -303,6 +304,7 @@ class Laser_Driver:
             self.sdk.SidekickSDK_ReadWriteSweepParams(self.handle, write)
         except:
             raise Laser_Exception("Wavelength sweep was not correctly performed.")
+        self.wavelength = stop
         sys.stderr.write("Wavelength sweep has concluded successfully.")
 
     def qcl_param_step(self, param, start, stop, step_size, dwell_time):
@@ -330,6 +332,13 @@ class Laser_Driver:
             qcl_params[param] = set_val
             self.__update_qcl_params(qcl_params)
             set_val += step_size
+
+        if(param == 'current_ma_ptr'):
+            self.qcl_current_ma = stop
+        elif(param == 'pulse_rate_hz_ptr'):
+            self.qcl_pulse_rate_hz = stop
+        else:
+            self.qcl_pulse_width_ns = stop
 
 
     def set_pulsewidth(self, value):
