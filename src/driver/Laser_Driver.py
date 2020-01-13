@@ -221,6 +221,48 @@ class LaserDriver:
                 raise Laser_Exception("Wavelength not tuned.")
         sys.stderr.write("Laser wavelength set successfully.")
 
+    def set_pulsewidth(self, value):
+        '''Set pulse width of the laser emission to value.
+
+        Arguments:
+            value: Desired pulsewidth value in ns.
+
+        Exceptions:
+            QCL_Exception Thrown if set_pulsewidth doesn't set the parameter within the required time.'''
+
+    self.qcl_pulse_width_ns = value
+    qcl_params = self.__read_qcl_params()
+    qcl_params['pulse_width_ns_ptr'].contents.value = value
+    self.__set_qcl_params(qcl_params)
+
+    def set_pulserate(self, value):
+        '''Set pulse rate of the laser emission to value.
+
+        Arguments:
+            value: Desired pulse rate value in Hz.
+
+        Exceptions:
+            QCL_Exception Thrown if set_pulserate doesn't set the parameter within the required time.'''
+
+        self.qcl_pulse_rate_hz = value
+        qcl_params = self.__read_qcl_params()
+        qcl_params['pulse_rate_hz_ptr'].contents.value = value
+        self.__set_qcl_params(qcl_params)
+
+    def set_current(self, value):
+        '''Set current of the laser emission to value.
+
+        Arguments:
+            value: Desired current value in mA.
+
+        Exceptions:
+            QCL_Exception Thrown if set_current doesn't set the parameter within the required time.'''
+
+        self.qcl_current_ma = value
+        qcl_params = self.__read_qcl_params()
+        qcl_params['current_ma_ptr'].contents.value = value
+        self.__set_qcl_params(qcl_params)
+
     def cool_tecs(self):
         '''Wait for TECs to cool to correct temp.
 
