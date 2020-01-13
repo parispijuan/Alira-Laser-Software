@@ -317,6 +317,29 @@ class Laser_Driver:
             raise Laser_Exception("Wavelength sweep was not correctly performed.")
         sys.stderr.write("Wavelength sweep has concluded successfully.")
 
+    def qcl_param_step(self, param, start, stop, step_size, dwell_time):
+        ## @brief Perform a scan over the given qcl parameter.
+        #
+        #  Scans from start to stop by step_size for the given qcl parameter
+        #  (current, pulsewidth, pulserate), dwelling for a specified time at each.
+        #  @param param Key within params dictionary of desired QCL parameter.
+        #  @param start Beginning value of the scan for the QCL parameter.
+        #  @param stop Ending value of the scan for the QCL parameter.
+        #  @param step_size Step change quantity for the scan.
+        #  @param dwell_time Time spent at each increment (in seconds)
+
+        # Set initial value and wait before stepping.
+        qcl_params = self.__read_qcl_params()
+        qcl_params[param] = start
+        self.__update_qcl_params(qcl_params)
+        time.sleep(5)
+
+        set_val = start + step_size
+        while set_val < stop:
+            qcl_params[param] = set_val
+            self.__update_qcl_params(qcl_params)
+            set_val += step_size
+
     def set_pulsewidth(self, value):
         ## @brief Set pulse width of the laser emission to value.
         #
