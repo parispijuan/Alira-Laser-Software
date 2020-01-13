@@ -1,4 +1,4 @@
-"""
+"""@package docstring
 Jake Bryon, Dec 9 2019
 writing a basic script to explore making interactive plots
 using a class structure

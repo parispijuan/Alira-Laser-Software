@@ -1,4 +1,4 @@
-"""
+"""@package docstring
 Jake Bryon, Dec 16 2019
 Class for displaying data taken from laser expirement
 
