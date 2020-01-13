@@ -234,11 +234,9 @@ class Display:
         """
         method to divide two data sets, find the ratio 
         """
-        subtract_number = int(text)
+        ratio_number = int(text)
 
-        self.data[self.Num].data_adjusted = np.divide(
-            self.data[self.Num].data_adjusted,
-            self.data[subtract_number].data_adjusted )
+        self.data[self.Num].ratio(self.data[ratio_number].data_adjusted)
 
         self.subplots[self.Num].cla()
         self.subplot_data(plot_num = self.Num)

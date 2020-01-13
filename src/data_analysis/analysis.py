@@ -79,3 +79,15 @@ class Analysis:
         """
         self.data_adjusted = self.data_adjusted/max(self.data_adjusted)
 
+    def ratio(self, ratio_data):
+        """
+        ratio_data: Nx1 numpy array, must be equal length of data_adjusted
+
+        takes the ratio of the current data_adjusted with a new array
+        """
+        self.data_adjusted = np.divide(
+            self.data_adjusted,
+            ratio_data
+            )
+
+
