@@ -12,10 +12,19 @@ import matplotlib.pyplot as plt
 import zhinst
 import zhinst.ziPython
 import zhinst.utils
+import sys
 
+class Laser_Exception(Exception):
+    '''Exception class indicating an issue having to do with laser hardware'''
+    pass
 
-class HardwareException(Exception):
-    '''Exception class for all fatal exceptions in hardware control'''
+class QCL_Exception(Exception):
+    '''Exception class indicating an issue with the QCL controller.'''
+    pass
+
+## Exception class indicating an issue interacting with or contacting the SDK.
+class SDK_Exception(Exception):
+    '''Exception class indicating an issue interacting with or contacting the SDK.'''
     pass
 
 
@@ -31,7 +40,7 @@ class LaserDriver:
           sdk_location: 86 or 64 (which version of Sidekick sdk to load)
 
         Raises:
-           HardwareException if SDK cannot be initialized
+           SDK_Exception if SDK cannot be initialized
         '''
 
         if sdk_version == 64:
@@ -112,7 +121,8 @@ class LaserDriver:
         '''Main method to perform all laser setup prior to scanning.
 
         Raises:
-           HardwareException for fatal errors controlling hardware
+            SDK_Exception, Laser_Exception, or QCL_Exception indicating
+            fatal error controlling hardware
         '''
         try:
             self.connect_laser()
@@ -122,7 +132,8 @@ class LaserDriver:
             self.turn_on_laser()
             self.connect_to_lockin()
             self.initialize_lockin()
-        except HardwareException as e:
+        except:
+            e = sys.exc_info()[0]
             self.turn_off_laser()
             raise e
 
@@ -130,7 +141,7 @@ class LaserDriver:
         '''Connect to laser via USB.
 
         Raises:
-          HardwareException if laser is unavailable or incorrectly connected
+          SDK_Exception if laser is unavailable or incorrectly connected
         '''
         num_devices_ptr = pointer(c_uint16())
         handle_ptr = pointer(c_uint32())
@@ -154,7 +165,7 @@ class LaserDriver:
         '''Arm laser for scan.
 
         Raises:
-          HardwareException if laser is not armed before timeout.
+          Laser_Exception if laser is not armed before timeout.
         '''
         is_armed_ptr = pointer(c_bool(False))
         self.sdk.SidekickSDK_SetLaserArmDisarm(self.handle, True) #c_bool(True))
@@ -168,14 +179,14 @@ class LaserDriver:
             self.sdk.SidekickSDK_isLaserArmed(self.handle, is_armed_ptr)
             curr_t = time.time()
             if curr_t - old_t > self.arm_laser_timeout:
-                raise HardwareException('Unable to arm laser')
+                raise Laser_Exception('Unable to arm laser')
         print('Laser armed')
 
     def set_qcl_params(self):
         '''Set relevant parameters of the QCL.
 
         Raises:
-          HardwareException if QCL params aren't set before timeout
+          QCL_Exception if QCL params aren't set before timeout
         '''
         qcl_params = self._read_qcl_params()
         qcl_params['pulse_rate_hz_ptr'].contents = c_uint32(self.qcl_pulse_rate_hz)
@@ -191,7 +202,7 @@ class LaserDriver:
             qcl_params = self._read_qcl_params()
             curr_t = time.time()
             if curr_t - old_t > self.qcl_set_params_timeout:
-                HardwareException("Unable to set QCL params")
+                QCL_Exception("Unable to set QCL params")
             time.sleep(1)
         print("QCL Parameters: {}".format(
             dict([(k, v.contents.value) for k, v in qcl_params.items()])))
@@ -200,7 +211,7 @@ class LaserDriver:
         '''Wait for TECs to cool to correct temp.
 
         Raises:
-          HardwareException if TECs unable to cool
+          Laser_Exception if TECs unable to cool
         '''
         is_temp_set_ptr = pointer(c_bool(False))
         self.sdk.SidekickSDK_ReadInfoStatusMask(self.handle)
@@ -212,7 +223,7 @@ class LaserDriver:
             self.sdk.SidekickSDK_isTempStatusSet(self.handle, is_temp_set_ptr)
             curr_t = time.time()
             if curr_t - old_t > self.cool_tecs_timeout:
-                raise HardwareException('TECs unable to cool')
+                raise Laser_Exception('TECs unable to cool')
         time.sleep(self.cool_tecs_additional)
         print('TECs are at Temp')
 
@@ -220,7 +231,7 @@ class LaserDriver:
         '''Turn on QCL laser.
 
         Raises:
-          HardwareException if laser does not turn on within a certain number of attempts
+          Laser_Exception if laser does not turn on within a certain number of attempts
         '''
         status_word_ptr = pointer(c_uint32())
         error_word_ptr = pointer(c_uint16())
@@ -260,7 +271,7 @@ class LaserDriver:
             self.laser_on = True
 
         if not is_emitting_ptr.contents.value:
-            raise HardwareException('Laser failed to turn on')
+            raise Laser_Exception('Laser failed to turn on')
 
         print('Laser is on.')
 
@@ -268,8 +279,6 @@ class LaserDriver:
         '''Connect to lock-in amplifier.'''
         self.daq = self.zi_sdk.ziPython.ziDAQServer(self.lockin_ip, self.lockin_port)
         self.device = self.zi_sdk.utils.autoDetect(self.daq)
-        #device_id = 'dev3097'
-        #zi_device = self._get_lockin_ref(device_id)
         print('Connected to lock-In device {}'.format(self.device))
 
     def initialize_lockin(self):
@@ -321,10 +330,7 @@ class LaserDriver:
         time.sleep(10 * self.lockin_time_constant)
 
     def turn_off_laser(self):
-        '''Turn off and disconnect from laser.
-        Raises:
-           HardwareException if the laser fails to disarm or turn off
-        '''
+        '''Turn off and disconnect from laser.'''
         turn_on = False
         arm = False
         self.sdk.SidekickSDK_SetLaserOnOff(self.handle, 0, turn_on)
@@ -408,13 +414,13 @@ class LaserDriver:
           *args: optional arguments to pass to SDK function.
 
         Raises:
-          HardwareException if SDK function fails
+          SDK_Exception if SDK function fails
         '''
         ret = sdk_fn() if not args else sdk_fn(*args)
         if ret == self.sidekick_sdk_ret_success:
             print(success_msg)
         else:
-            raise HardwareException(error_msg)
+            raise SDK_Exception(error_msg)
 
     def _call_sdk_bool_ptr(self, sdk_fn, success_msg, error_msg):
         '''Call SDk function and check boolean status value set by reference.
@@ -425,7 +431,7 @@ class LaserDriver:
           error_msg: string message to print if function fails
 
         Raises:
-          HardwareException if SDK function fails
+          SDK_Exception if SDK function fails
         '''
         ret_ptr = pointer(c_bool(False))
         sdk_fn(self.handle, ret_ptr)
@@ -433,4 +439,4 @@ class LaserDriver:
             print(success_msg)
         else:
             self.sdk.SidekickSDK_Disconnect(self.handle)
-            raise HardwareException(error_msg)
+            raise SDK_Exception(error_msg)
