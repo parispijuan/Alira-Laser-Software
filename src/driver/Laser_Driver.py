@@ -96,13 +96,21 @@ class LaserDriver:
         self.device = None
         self.daq = None
 
-    def setup_experiment(self):
+    def startup(self, wave, waveunit, current, pulsewid, pulserate):
         '''Main method to perform all laser setup prior to scanning.
 
         Raises:
             SDK_Exception, Laser_Exception, or QCL_Exception indicating
             fatal error controlling hardware
         '''
+         #Set all system parameters to the desired initial values
+        self.qcl_wavelength = wave
+        self.qcl_wvlen_units = waveunit
+        self.qcl_current_ma_ma = current
+        self.qcl_pulse_width_ns = pulsewid
+        self.qcl_pulse_rate_hz = pulserate
+
+
         try:
             self.connect_laser()
             self.arm_laser()
