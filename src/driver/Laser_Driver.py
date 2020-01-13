@@ -52,30 +52,30 @@ class LaserDriver:
         else:
             self.sdk_location = os.path.join(os.path.dirname(__file__), 'SidekickSDKx86.dll')
 
+        #Timing constants
         self.arm_laser_timeout = 20
+        self.cool_tecs_timeout = 60
+        self.cool_tecs_additional = 10
+        self.turn_on_laser_timeout = 30
+        self.laser_on_attempts = 3
+        self.laser_on_wait = 5
+        self.laser_turn_off_attempts = 3
 
+        #Laser state parameters
         self.qcl_pulse_rate_hz = 100000
         self.qcl_temp_c = 17
         self.qcl_current_ma = 1500
         self.qcl_width_ns = 500
         self.qcl_set_params_timeout = 5
-
-        self.cool_tecs_timeout = 60
-        self.cool_tecs_additional = 10
-
-        self.turn_on_laser_timeout = 30
-
+        self.qcl_wavelength = 0
         self.laser_on = False
-        self.laser_on_attempts = 3
-        self.laser_on_wait = 5
 
+        #Lockin vars
         self.lockin_ip = '192.168.48.102'
         self.lockin_port = 8004
         self.lockin_amplitude = 1.0 # [V]
         self.lockin_poll_length = 30
-
         self.lockin_demod_c = '0' # demod channel, for paths on the device
-        # self.lockin_out_c = '0' # signal output channel
         self.lockin_in_c = '0' # signal input channel
         self.lockin_osc_c = '0' # oscillator
         self.lockin_osc_freq = 100000 # 30e5 #[Hz] this matches the laser controller
@@ -84,35 +84,14 @@ class LaserDriver:
         self.poll_timeout = 500 # timeout in ms
         self.demod_rate = 2e3 # 80 # 300 [samples / s]
 
-        self.start_delay = 5
-        self.num_scan_steps = 1
-        self.scan_ww_unit = c_uint8(2) # SIDEKICK_SDK_UNITS_CM1
-        self.scan_start_ww = c_float(1020)
-        self.scan_stop_ww = c_float(1220)
-        self.scan_step = c_float(3)
-        self.manual_tuning_timeout = 50
-        self.scan_num_scans = c_uint16(1)
-        self.scan_keep_on = c_uint8(1) #0
-        self.scan_bidirectional = c_uint8(0)
-        self.scan_dwell_time_ms = c_uint32(250) #200
-        self.scan_trans_time_ms = c_uint32(25) #25
-        self.scan_write = c_bool(True)
-        self.scan_operation = c_uint8(7) # SIDEKICK_SDK_SCAN_START_STEP_MEASURE
-        self.scan_wait = 0.25
-        self.step_scan_timeout = 30
-
+        #Interaction system constants and objects
         self.qcl_read_is_write = c_bool(False)
         self.qcl_update_is_write = c_bool(True)
-
         self.sidekick_sdk_ret_success = 0
-
         self.sdk = CDLL(self.sdk_location) if testing_sdk is None else testing_sdk
         self.zi_sdk = zhinst if testing_zi_sdk is None else testing_zi_sdk
         self._call_sdk_bool(self.sdk.SidekickSDK_Initialize,
                             'SDK initialization successful', 'Unable to initialize SDK')
-
-        self.laser_turn_off_attempts = 3
-
         self.handle = None
         self.device = None
         self.daq = None
