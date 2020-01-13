@@ -3,7 +3,6 @@ import os
 import platform
 from ctypes import CDLL, pointer, c_uint32, c_uint16, c_uint8, c_bool, c_float, c_char
 from threading import Thread
-import numpy as np
 import matplotlib.pyplot as plt
 import zhinst
 import zhinst.ziPython
@@ -180,36 +179,36 @@ class Laser_Driver:
             self.turn_off_laser()
             raise e
 
-    def connect_laser(self):
+    def __connect_laser(self):
         ## @Brief Connect to laser using USB port.
         #
         #  @exceptions SDK_Exception Thrown if __connect_laser does not establish connection.
 
         num_devices_ptr = pointer(c_uint16())
         handle_ptr = pointer(c_uint32())
-        self._call_sdk_bool(self.sdk.SidekickSDK_SearchForUsbDevices,
-                            'Found USB devices', 'Error occured while searching for USB devices')
-        self._call_sdk_bool(self.sdk.SidekickSDK_GetNumOfDevices,
-                            'Got device count', 'Error when getting device count', num_devices_ptr)
-        self._call_sdk_bool(self.sdk.SidekickSDK_ConnectToDeviceNumber,
-                            'Connected to laser', 'Unable to connect to laser',
+        self.__call_sdk_bool(self.sdk.SidekickSDK_SearchForUsbDevices,
+                            'Found USB devices.', 'Error occured while searching for USB devices.')
+        self.__call_sdk_bool(self.sdk.SidekickSDK_GetNumOfDevices,
+                            'Got device count.', 'Error when getting device count.', num_devices_ptr)
+        self.__call_sdk_bool(self.sdk.SidekickSDK_ConnectToDeviceNumber,
+                            'Connected to laser.', 'Unable to connect to laser.',
                             handle_ptr, c_uint16(num_devices_ptr.contents.value - 1))
         self.handle = handle_ptr.contents
         self.sdk.SidekickSDK_ReadAdminQclParams(self.handle, 0)
-        self._call_sdk_bool_ptr(self.sdk.SidekickSDK_AdminQclIsAvailable,
-                                'QCL installed and detected', 'QCL not detected')
-        self._call_sdk_bool_ptr(self.sdk.SidekickSDK_isInterlockedStatusSet,
-                                'Interlock set', 'Interlock not set')
-        self._call_sdk_bool_ptr(self.sdk.SidekickSDK_isKeySwitchStatusSet,
-                                'Keyswitch set', 'Keyswitch not set')
+        self.__call_sdk_bool_ptr(self.sdk.SidekickSDK_AdminQclIsAvailable,
+                                'QCL installed and detected.', 'QCL not detected.')
+        self.__call_sdk_bool_ptr(self.sdk.SidekickSDK_isInterlockedStatusSet,
+                                'Interlock set.', 'Interlock not set.')
+        self.__call_sdk_bool_ptr(self.sdk.SidekickSDK_isKeySwitchStatusSet,
+                                'Keyswitch set.', 'Keyswitch not set.')
 
-    def arm_laser(self):
+    def __arm_laser(self):
         ## @brief Arm laser for general use.
         #
         #  @exceptions Laser_Exception Thrown if __arm_laser unable to arm the laser within timeout period.
 
         is_armed_ptr = pointer(c_bool(False))
-        self.sdk.SidekickSDK_SetLaserArmDisarm(self.handle, True) #c_bool(True))
+        self.sdk.SidekickSDK_SetLaserArmDisarm(self.handle, True)
         self.sdk.SidekickSDK_ExecLaserArmDisarm(self.handle)
         self.sdk.SidekickSDK_ReadInfoStatusMask(self.handle)
         self.sdk.SidekickSDK_isLaserArmed(self.handle, is_armed_ptr)
@@ -220,30 +219,31 @@ class Laser_Driver:
             self.sdk.SidekickSDK_isLaserArmed(self.handle, is_armed_ptr)
             curr_t = time.time()
             if curr_t - old_t > self.arm_laser_timeout:
-                raise Laser_Exception('Unable to arm laser')
-        sys.stderr.write('Laser armed')
+                raise Laser_Exception("Laser not armed.")
+        sys.stderr.write("Laser is armed.")
 
-    def set_qcl_params(self):
+    def __set_qcl_params(self):
         ## @brief Set relevant parameters of the QCL controller.
         #
         #  @exceptions QCL_Exception Thrown if __set_qcl_params unable to set the parameters within the given time.
 
-        qcl_params = self._read_qcl_params()
+        qcl_params = self.__read_qcl_params()
         qcl_params['pulse_rate_hz_ptr'].contents = c_uint32(self.qcl_pulse_rate_hz)
-        qcl_params['temp_c_ptr'].contents = c_float(self.qcl_temp_c)
+        qcl_params['temp_c_ptr'].contents = c_float(self.qcl_temp)
         qcl_params['current_ma_ptr'].contents = c_uint16(self.qcl_current_ma)
-        qcl_params['pulse_width_ns_ptr'].contents = c_uint32(self.qcl_width_ns)
-        self._update_qcl_params(qcl_params)
+        qcl_params['pulse_width_ns_ptr'].contents = c_uint32(self.qcl_pulse_width_ns)
+        self.__update_qcl_params(qcl_params)
         old_t = time.time()
         while (qcl_params['pulse_rate_hz_ptr'].contents.value != self.qcl_pulse_rate_hz or
-               qcl_params['temp_c_ptr'].contents.value != self.qcl_temp_c or
+               qcl_params['temp_c_ptr'].contents.value != self.qcl_temp or
                qcl_params['current_ma_ptr'].contents.value != self.qcl_current_ma or
-               qcl_params['pulse_width_ns_ptr'].contents.value != self.qcl_width_ns):
-            qcl_params = self._read_qcl_params()
+               qcl_params['pulse_width_ns_ptr'].contents.value != self.qcl_pulse_width_ns):
+            qcl_params = self.__read_qcl_params()
             curr_t = time.time()
-            if curr_t - old_t > self.qcl_set_params_timeout:
-                QCL_Exception("Unable to set QCL params")
+            if curr_t - old_t > self.parameter_timeout:
+                raise QCL_Exception("Laser parameters not set.")
             time.sleep(1)
+        sys.stderr.write("Laser parameters have been set successfully.")
 
 
     def set_wavelength(self, units, value):
@@ -373,7 +373,7 @@ class Laser_Driver:
         qcl_params['current_ma_ptr'].contents.value = value
         self.__set_qcl_params(qcl_params)
 
-    def cool_tecs(self):
+    def __cool_tecs(self):
         ## @brief Wait for TECs to cool to correct temp.
         #
         #  @exceptions Laser_Exception Thrown if the TECs are unable to cool to the desired temperature.
@@ -388,11 +388,11 @@ class Laser_Driver:
             self.sdk.SidekickSDK_isTempStatusSet(self.handle, is_temp_set_ptr)
             curr_t = time.time()
             if curr_t - old_t > self.cool_tecs_timeout:
-                raise Laser_Exception('TECs unable to cool')
+                raise Laser_Exception("TECs are not cooled.")
         time.sleep(self.cool_tecs_additional)
-        sys.stderr.write('TECs are at Temp')
+        sys.stderr.write('TECs are at the desired temperature.')
 
-    def turn_on_laser(self):
+    def __turn_on_laser(self):
         ## @brief Turn on the actual laser and begin emitting.
         #
         #  @exceptions Laser_Exception if laser does not turn on within a certain number of attempts.
@@ -411,7 +411,7 @@ class Laser_Driver:
             self.sdk.SidekickSDK_ExecLaserOnOff(self.handle)
             self.sdk.SidekickSDK_ReadInfoStatusMask(self.handle)
             self.sdk.SidekickSDK_isLaserFiring(self.handle, is_emitting_ptr)
-            sys.stderr.write("Turn on attempts: {}".format(attempts))
+            sys.stderr.write("Turn on attempts: {}.".format(attempts))
 
             old_t = time.time()
             curr_t = 0
@@ -424,7 +424,7 @@ class Laser_Driver:
                     break
             self.sdk.SidekickSDK_ReadStatusMask(
                 self.handle, status_word_ptr, error_word_ptr, warning_word_ptr)
-            sys.stderr.write('Status Word is {}, Error Word is {}, Warning Word is {}'.format(
+            sys.stderr.write('Status Word is {}, Error Word is {}, Warning Word is {}.'.format(
                 status_word_ptr.contents.value, error_word_ptr.contents.value,
                 warning_word_ptr.contents.value))
 
@@ -435,17 +435,17 @@ class Laser_Driver:
             self.laser_on = True
 
         if not is_emitting_ptr.contents.value:
-            raise Laser_Exception('Laser failed to turn on')
+            raise Laser_Exception("Laser did not turn on.")
+        sys.stderr.write("Laser is firing.")
+        self.laser_on = True
 
-        sys.stderr.write('Laser is on.')
-
-    def connect_to_lockin(self):
+    def __connect_to_lockin(self):
         ## @brief Connect to lock-in amplifier.
         self.daq = self.zi_sdk.ziPython.ziDAQServer(self.lockin_ip, self.lockin_port)
         self.device = self.zi_sdk.utils.autoDetect(self.daq)
-        sys.stderr.write('Connected to lock-In device {}'.format(self.device))
+        sys.stderr.write('Connected to lock-In device {}.'.format(self.device))
 
-    def initialize_lockin(self):
+    def __initialize_lockin(self):
         ## @brief Initialize lock-in amplifier.
         sys.stderr.write("Initializing lock-in amp")
 
@@ -501,11 +501,10 @@ class Laser_Driver:
         self.sdk.SidekickSDK_ExecLaserOnOff(self.handle)
         self.sdk.SidekickSDK_SetLaserArmDisarm(self.handle, arm)
         self.sdk.SidekickSDK_ExecLaserArmDisarm(self.handle)
-
         self.sdk.SidekickSDK_Disconnect(self.handle)
-        sys.stderr.write("Laser off")
+        sys.stderr.write("Laser has been turned off.")
 
-    def _read_qcl_params(self):
+    def __read_qcl_params(self):
         ## @brief Read QCL parameters into dictionary.
         #
         #  @returns Dictionary of QCL parameter pointers
@@ -514,7 +513,7 @@ class Laser_Driver:
                   'pulse_width_ns_ptr': pointer(c_uint32()), 'current_ma_ptr': pointer(c_uint16()),
                   'temp_c_ptr': pointer(c_float()), 'laser_mode_ptr': pointer(c_uint8()),
                   'pulse_mode_ptr': pointer(c_uint8()), 'vsrc_ptr': pointer(c_float())}
-        self.sdk.SidekickSDK_ReadWriteLaserQclParams(self.handle, self.qcl_read_is_write, 0)
+        self.sdk.SidekickSDK_ReadWriteLaserQclParams(self.handle, self.qcl_read, 0)
         self.sdk.SidekickSDK_GetLaserQclParams(
             self.handle, params['qcl_slot_ptr'], params['pulse_rate_hz_ptr'],
             params['pulse_width_ns_ptr'], params['current_ma_ptr'],
@@ -522,19 +521,18 @@ class Laser_Driver:
             params['pulse_mode_ptr'], params['vsrc_ptr'])
         return params
 
-    def _update_qcl_params(self, params):
+    def __update_qcl_params(self, params):
         ## @brief Update QCL parameters with values in argument.
         #
         #  @param params Dictionary of pointers to QCL parameter values.
-
         self.sdk.SidekickSDK_SetLaserQclParams(
             self.handle, params['qcl_slot_ptr'].contents, params['pulse_rate_hz_ptr'].contents,
             params['pulse_width_ns_ptr'].contents, params['current_ma_ptr'].contents,
             params['temp_c_ptr'].contents, params['laser_mode_ptr'].contents,
             params['pulse_mode_ptr'].contents, params['vsrc_ptr'].contents)
-        self.sdk.SidekickSDK_ReadWriteLaserQclParams(self.handle, self.qcl_update_is_write, 0)
+        self.sdk.SidekickSDK_ReadWriteLaserQclParams(self.handle, self.qcl_write, 0)
 
-    def _collect_data(self, data_list, time_list):
+    def collect_data(self, data_list, time_list):
         ## @brief Collects observed laser emission data.
         #
         #   Function for gathering data from detector via lock-in amp. Appends
@@ -565,7 +563,7 @@ class Laser_Driver:
         data_list.append(data)
         time_list.append(time_axis)
 
-    def _call_sdk_bool(self, sdk_fn, success_msg="Success", error_msg="Failure", *args):
+    def __call_sdk_bool(self, sdk_fn, success_msg="Success", error_msg="Failure", *args):
         ## @brief Call SDK function with optional arguments and check return value.
         #
         #  @param sdk_fn SDK function to call
@@ -580,7 +578,7 @@ class Laser_Driver:
         else:
             raise SDK_Exception(error_msg)
 
-    def _call_sdk_bool_ptr(self, sdk_fn, success_msg, error_msg):
+    def __call_sdk_bool_ptr(self, sdk_fn, success_msg, error_msg):
         ## @brief Call SDk function and check boolean status value set by reference.
         #
         #  @param sdk_fn SDK function to call
