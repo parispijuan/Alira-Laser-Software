@@ -36,9 +36,9 @@ class AnalysisTesting(unittest.TestCase):
         self.analysis_obj.data_adjusted[0] = 10000
         self.analysis_obj.data_adjusted[1] = 0.000001
 
-        print(self.analysis_obj.data_raw)
-        self.assertNotEqual(self.analysis_obj.data_raw, \
-                            self.analysis_obj.data_adjusted)
+        self.assertEqual(
+            np.array_equal(self.analysis_obj.data_raw, \
+                           self.analysis_obj.data_adjusted), False)
 
         self.analysis_obj.reset()
 

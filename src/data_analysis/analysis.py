@@ -15,14 +15,14 @@ from scipy import integrate
 ### defining class for preforming analysis on data
 """
 Analysis class takes in raw data as input and handles all manipulation of data
-it stores data into two main peices, data raw, which is never altered, and
+it stores data into two main pieces, data raw, which is never altered, and
 data_adjusted which is manipulated with the other mthods
 """
 class Analysis:
 
     def __init__(self, data_raw):
         self.data_raw = data_raw
-        self.data_adjusted = data_raw
+        self.data_adjusted = np.copy(data_raw)
 
     def reset(self):
         """ resets data_adjusted back to the raw """
