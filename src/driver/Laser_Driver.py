@@ -118,8 +118,6 @@ class Laser_Driver:
         ##@}
 
         #Interaction system constants and objects
-        self.qcl_read_is_write = c_bool(False)
-        self.qcl_update_is_write = c_bool(True)
         self.sidekick_sdk_ret_success = 0
         self.sdk = CDLL(self.sdk_location) if testing_sdk is None else testing_sdk
         self.zi_sdk = zhinst if testing_zi_sdk is None else testing_zi_sdk
@@ -128,6 +126,20 @@ class Laser_Driver:
         self.handle = None
         self.device = None
         self.daq = None
+
+        ##
+        # @defgroup Set_Parameter_Constants
+        # Constants required for setting laser parameters.
+        ##@{
+        # Reading requires passing false to readwrite functions.
+        self.qcl_read = c_bool(False)
+        # Writing requires passing true to readwrite functions.
+        self.qcl_write = c_bool(True)
+        # Performs just a single scan per call.
+        self.scan_count = c_uint16(1)
+        # Dummy parameter for function which is meant for non SideKick Projects.
+        self.pref_qcl = c_uint8(0)
+        ##@}
 
     def startup(self, wave, waveunit, current, pulsewid, pulserate):
     ## @brief Attempts to start the laser with the given system parameters.
@@ -250,6 +262,27 @@ class Laser_Driver:
             if curr_t - old_t > self.parameter_timeout:
                 raise Laser_Exception("Wavelength not tuned.")
         sys.stderr.write("Laser wavelength set successfully.")
+
+    def wave_sweep(self, units, start, stop, speed):
+        ## @brief Performs a continuous sweep over wavelengths.
+        #
+        #   Provides continuous sweeping functionality for the wavelength using the
+        #   built-in SDK functions. No other parameters offer functions like this,
+        #   as they definitively set their respective values.
+        #  @param units Integer specifying unit for wavelength (2: Wavenumber).
+        #  @param start Wavelength to begin the sweep at (in the units supplied).
+        #  @param stop Wavelength to cease the sweep at (in the units supplied).
+        #  @param speed Speed of the sweep in supplied wavelength units per second.
+        #  @exceptions Laser_Exception Thrown if wave_sweep does not correctly perform the wavelength sweep.
+
+        try:
+            write = c_bool(True)
+            self.sdk.SidekickSDK_SetSweepParams(self.handle, c_uint8(units), c_float(start), c_float(stop),
+                                c_float(speed), self.scan_count, self.pref_qcl, c_uint8(bidirectional))
+            self.sdk.SideKickSDK_ReadWriteSweepParams(self.handle, write)
+        except:
+            raise Laser_Exception("Wavelength sweep was not correctly performed.")
+        sys.stderr.write("Wavelength sweep has concluded successfully.")
 
     def set_pulsewidth(self, value):
         ## @brief Set pulse width of the laser emission to value.
@@ -498,7 +531,7 @@ class Laser_Driver:
         #  @param success_msg string message to print if function returns success
         #  @param error_msg string message to print if function fails
         #  @exceptions SDK_Exception Thrown if SDK function fails
-        
+
         ret_ptr = pointer(c_bool(False))
         sdk_fn(self.handle, ret_ptr)
         if ret_ptr.contents.value:
