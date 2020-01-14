@@ -66,7 +66,8 @@ class Analysis:
     # @param self the object pointer 
     #
     def integrate(self):
-        self.data_adjusted = integrate.cumtrapz(self.data_adjusted)
+        self.data_adjusted = integrate.cumtrapz(self.data_adjusted,\
+             dx=self.data_raw[1]-self.data_raw[0])
 
     ## method to cut data at specifed points, picks out a range from 
     # data_adjusted and sets it to this specific range of the array
