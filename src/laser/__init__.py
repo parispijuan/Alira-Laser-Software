@@ -23,8 +23,34 @@ class SDK_Exception(Exception):
 
 ## Driver for controlling the Daylight solutions laser through the SideKick SDK,
 #  as well as retrieving data from a reciever set up with the corresponding laser.
-#
-class Laser_Driver:
+#  Singleton class to prevent program from having to drivers running simultaneously
+
+__global_laser_do_not_touch = {
+  '__instance': None,
+  '__get_called': False,
+}
+
+def get():
+  global __global_laser_do_not_touch
+  __global_laser_do_not_touch['__get_called'] = True
+  if __global_laser_do_not_touch['__instance'] is None:
+    __global_laser_do_not_touch['__instance'] = Laser()
+  return __global_laser_do_not_touch['__instance']
+
+def set_for_test(laser_instance):
+  global __global_laser_do_not_touch
+  if __global_laser_do_not_touch['__get_called']:
+    raise RuntimeError("Can not call set() after get()")
+  __global_laser_do_not_touch['__instance'] = laser_instance
+
+def reset_for_testing():
+  global __global_laser_do_not_touch
+  __global_laser_do_not_touch = {
+    '__instance': None,
+    '__get_called': False,
+  }
+
+class Laser:
     ## Constructor for the driver object. Links with driver C library and SDK to control hardware.
     def __init__(self, testing_sdk=None, testing_zi_sdk=None, sdk_version=None):
         ##
