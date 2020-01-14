@@ -5,7 +5,7 @@
 
 import unittest
 import numpy as np
-from data_analysis import analysis, display
+from data_analysis import analysis
 import time
 
 ## Testing class for the `Analysis` module
