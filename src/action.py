@@ -32,8 +32,4 @@ class WavelengthAction(Action):
 class CurrentAction(Action):
   def __init__(self):
     super().__init__('current')
-
-class ScanResolutionAction(Action):
-  def __init__(self):
-    super().__init__('scan_resolution')
     

@@ -1,4 +1,4 @@
-from action import PulseWidthAction, PulseRateAction, WavelengthAction, CurrentAction, ScanResolutionAction
+from action import PulseWidthAction, PulseRateAction, WavelengthAction, CurrentAction
 
 class Experiment:
 
