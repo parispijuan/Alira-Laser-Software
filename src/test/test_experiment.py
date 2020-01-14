@@ -6,6 +6,13 @@ class Testing(unittest.TestCase):
 
     def test_experiment_setup(self):
 
+      class Laser:
+        results = None
+        def set_field(self, field_name, value):
+          self.results = {field_name:value}
+
+      laser.set_for_test(Laser())
+
       class CustomWavelengthAction(WavelengthAction):
 
         results = None
@@ -21,9 +28,9 @@ class Testing(unittest.TestCase):
         .build()
       foobar_exp.run()
 
-      assert action.results ==  1337
+      self.assertEqual(action.results, 1337)
 
-    def test_laser(self):
+    def test_invalid_experiements(self):
 
       class Laser:
         results = None
@@ -34,16 +41,56 @@ class Testing(unittest.TestCase):
 
       class CustomWavelengthAction(WavelengthAction):
 
-        def run(self, current_time):
-          return current_time
+        results = None
 
-      foobar_exp = Experiment.builder() \
-        .with_actions([CustomWavelengthAction()]) \
-        .with_duration(1) \
-        .build()
-      foobar_exp.run()
-       
-      assert laser.get().results ==  {'wavelength':1}
+        def run(self, current_time):
+          if current_time == 5:
+            self.results = 1337
+
+      action = CustomWavelengthAction()
+
+      # No actions
+      with self.assertRaises(AssertionError):
+        foobar_exp = Experiment.builder() \
+          .with_actions([]) \
+          .with_duration(5) \
+          .build()
+        foobar_exp.run()
+
+      # No duration
+      with self.assertRaises(AssertionError):
+        foobar_exp = Experiment.builder() \
+          .with_actions([action]) \
+          .build()
+        foobar_exp.run()
+
+      # Negative duration
+      with self.assertRaises(AssertionError):
+        foobar_exp = Experiment.builder() \
+          .with_actions([action]) \
+          .with_duration(-1) \
+          .build()
+        foobar_exp.run()
+
+      # Too long duration
+      with self.assertRaises(AssertionError):
+        foobar_exp = Experiment.builder() \
+          .with_actions([action]) \
+          .with_duration(3*60*60) \
+          .build()
+        foobar_exp.run()
+
+    def test_laser_singleton(self):
+
+      with self.assertRaises(RuntimeError):
+        class Laser:
+          results = None
+          def set_field(self, field_name, value):
+            self.results = {field_name:value}
+
+        laser.set_for_test(Laser())
+        laser.get()
+        laser.set_for_test(Laser())
 
     def tearDown(self):
       # Need to destroy singleton instance after every test
