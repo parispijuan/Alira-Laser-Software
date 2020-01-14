@@ -283,6 +283,23 @@ class Laser_Driver:
             time.sleep(1)
         sys.stderr.write("Laser parameters have been set successfully.\n")
 
+    ## @brief Set the given parameter, which is  defined to be one of  four strings.
+    #
+    #         Sets the laser parameter determined by field name, but first
+    #         sanity checks on the values input.
+    #  @param value Wavelength value to which the laser will be tuned.
+    def set_field(self, field_name, value):
+        if(field_name == "pulse_width" and value <= 2500 and value >= 500):
+            self.set_pulsewidth(value)
+        elif(field_name == "pulse_rate" and value <= 15000 and value >= 5000):
+            self.set_pulserate(value)
+        elif(field_name == "wavelength" and value <= 1250 and value >= 950):
+            self.set_wavlength(value)
+        elif(field_name == "current" and value <= 1600 and value >= 1200):
+            self.set_current(value)
+        else:
+            raise Laser_Exception("This is not a valid parameter set.")
+
     ## @brief Set wavelength for the laser emission in units stored by the object.
     #
     #  @param value Wavelength value to which the laser will be tuned.
