@@ -295,35 +295,6 @@ class Laser_Driver:
         time.sleep(20)
         sys.stderr.write("Laser wavelength tuning to desired value.\n")
 
-    ## @brief Performs a discrete scan over wavelengths.
-    #
-    #         Function for taking discrete steps within a range of wavelengths. Other
-    #         parameters must be handled manually. Laser is kept on between steps.
-    #  @param start Wavelength to begin the sweep at.
-    #  @param stop Wavelength to cease the sweep at.
-    #  @param step_size Wavelength amount to change the tuning in each step.
-    #  @param dwell_time Time spent at each discrete wavelength value (ms).
-    #  @param trans_time Time spent transitioning between different levels.
-    #  @exception Laser_Exception Thrown if wave_step is not able to perform the scan.
-    def wave_step(self, start, stop, step_size, dwell_time, trans_time):
-        units = self.qcl_wvlen_units
-        write = c_bool(True)
-        try:
-            self.set_wavelength(start)
-            time.sleep(5)
-            self.sdk.SidekickSDK_SetStepMeasureParams(
-                self.handle, c_uint8(units), c_float(start), c_float(stop), c_float(step_size),
-                self.scan_count, self.keep_on, self.bidirectional_scans,
-                c_uint32(dwell_time), c_uint32(trans_time))
-            self.sdk.SidekickSDK_ReadWriteStepMeasureParams(self.handle, write)
-            self.sdk.SidekickSDK_SetScanOperation(self.handle, self.scan_operation)
-            self.sdk.SidekickSDK_ExecuteScanOperation(self.handle)
-        except:
-            raise Laser_Exception("Discrete wavelength scan has failed.")
-        self.wavelength = stop
-        sys.stderr.write("Wavelength scan has been successfully performed.\n")
-
-
     ## @brief Set pulse width of the laser emission to value.
     #
     #  @param value Desired pulsewidth value in ns.
