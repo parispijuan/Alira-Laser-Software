@@ -309,7 +309,7 @@ class Laser_Driver:
         set_ptr = pointer(c_bool(True))
         self.sdk.SidekickSDK_SetTuneToWW(self.handle, c_uint8(2), c_float(value), c_uint8(0))
         self.sdk.SidekickSDK_ExecTuneToWW(self.handle)
-        time.sleep(20)
+        time.sleep(5)
         sys.stderr.write("Laser wavelength tuning to desired value.\n")
 
     ## @brief Set pulse width of the laser emission to value.
