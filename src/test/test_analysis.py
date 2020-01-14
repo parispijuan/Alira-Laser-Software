@@ -52,12 +52,46 @@ class AnalysisTesting(unittest.TestCase):
 
     ## Test the differentiate function:
     #   - For the analysis linspace used, the derivative should be a constant 
-    #       0.04208417 for all values
+    #       1 for all values
+    #   - Square original, deriv should be 2*orig, ignore end points as np.gradient
+    #       uses first differences with those points
+    #   - Repeat this with the cube and to the fourth power
     def test_differentiate(self):
         self.analysis_obj.differentiate()
 
         for value in self.analysis_obj.data_adjusted.tolist():
-            self.assertAlmostEqual(value, 0.04208417) # default is 7 places
+            self.assertAlmostEqual(value, 1) # default is 7 places
+
+
+        self.analysis_obj.reset()
+        self.analysis_obj.data_adjusted = self.analysis_obj.data_adjusted**2
+        self.analysis_obj.differentiate()
+
+        for value,orig in zip(self.analysis_obj.data_adjusted.tolist()[1:-1],\
+                          self.analysis_obj.data_raw.tolist()[1:-1]):
+            self.assertAlmostEqual(value, 2*orig)
+
+
+        self.analysis_obj.reset()
+        self.analysis_obj.data_adjusted = self.analysis_obj.data_adjusted**3
+        self.analysis_obj.differentiate()
+        self.analysis_obj.differentiate()
+
+        for value,orig in zip(self.analysis_obj.data_adjusted.tolist()[2:-2],\
+                          self.analysis_obj.data_raw.tolist()[2:-2]):
+            self.assertAlmostEqual(value, 6*orig)
+
+
+        self.analysis_obj.reset()
+        self.analysis_obj.data_adjusted = self.analysis_obj.data_adjusted**4
+        self.analysis_obj.differentiate()
+        self.analysis_obj.differentiate()
+        self.analysis_obj.differentiate()
+
+        for value,orig in zip(self.analysis_obj.data_adjusted.tolist()[3:-3],\
+                          self.analysis_obj.data_raw.tolist()[3:-3]):
+            self.assertAlmostEqual(value, 24*orig)
+
 
 
     ## Test the integrate function:
@@ -89,12 +123,14 @@ class AnalysisTesting(unittest.TestCase):
     #   - For the analysis linspace used, all values should be divided by 10.5
     #   - Iterate and compare each value of the new array to the old array's value
     #       divided by 10.5
+    #   - The values should all be less than one, so assert this and check
     def test_normalize(self):
         self.analysis_obj.normalize()
 
         i = 0
         for value in self.analysis_obj.data_adjusted.tolist():
             self.assertEqual(value, self.analysis_obj.data_raw[i]/10.5)
+            self.assertLessEqual(value, 1)
             i += 1
 
 
