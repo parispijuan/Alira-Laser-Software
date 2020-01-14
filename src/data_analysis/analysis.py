@@ -60,6 +60,8 @@ class Analysis:
     def differentiate(self):
         self.data_adjusted = np.gradient(self.data_adjusted, \
             self.data_raw[1]-self.data_raw[0])
+        
+        self.data_adjusted = np.around(self.data_adjusted,12)
 
     ## method to integrate data_adjusted
     #
