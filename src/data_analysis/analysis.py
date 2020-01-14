@@ -57,7 +57,7 @@ class Analysis:
 
     def differentiate(self):
         """ calculates derivitive of data_adjusted """
-        self.data_adjusted = np.gradient(self.data_adjusted)
+        self.data_adjusted = np.diff(self.data_adjusted)
 
     def integrate(self):
         """ calculates integral of data_adjusted """
