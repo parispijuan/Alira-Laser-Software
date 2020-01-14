@@ -4,6 +4,7 @@ import sys
 import platform
 from ctypes import CDLL, pointer, c_uint32, c_uint16, c_uint8, c_bool, c_float, c_char
 from threading import Thread
+import numpy as np
 import zhinst
 import zhinst.ziPython
 import zhinst.utils
@@ -188,6 +189,21 @@ class Laser_Driver:
 
         #@}
 
+        ## Thread object for collecting data when the laser is in operation.
+        self.poll_thread = None
+        self.data = []
+        self.time_axis = []
+
+        ## @Brief  Function for ensuring that the laser is disconnected when
+        #
+        #          Ensures that the laser is disconnected and powered off if the
+        #          calling class as forgotten to ensure that this happens.
+        def __del__():
+            self.poll_thread.join()
+            data = np.stack([np.array(self.data), np.array(self.time_axis)])
+            np.savetxt("Data.csv", data, delimiter = ",")
+            self.turn_off_laser()
+
     ## @brief Attempts to start the laser with the given system parameters.
     #
     #  @param wave Wavelength, units specified by waveunit.
@@ -205,7 +221,6 @@ class Laser_Driver:
         self.qcl_current_ma = current
         self.qcl_pulse_width_ns = pulsewid
         self.qcl_pulse_rate_hz = pulserate
-
         # Begin firing the physical system
         try:
             self.__connect_laser()
@@ -215,6 +230,8 @@ class Laser_Driver:
             self.__turn_on_laser()
             self.__connect_to_lockin()
             self.__initialize_lockin()
+            self.poll_thread = Thread(target=self.collect_data, args=(self.data, self.time_axis), name="poll_thread")
+            poll_thread.start()
         except:
             e = sys.exc_info()[0]
             self.turn_off_laser()
