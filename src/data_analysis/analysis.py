@@ -68,8 +68,7 @@ class Analysis:
     # @param self the object pointer 
     #
     def integrate(self):
-        self.data_adjusted = integrate.cumtrapz(self.data_adjusted,\
-             dx=self.data_raw[1]-self.data_raw[0])
+        self.data_adjusted = integrate.cumtrapz(self.data_adjusted)
 
     ## method to cut data at specifed points, picks out a range from 
     # data_adjusted and sets it to this specific range of the array
@@ -97,8 +96,9 @@ class Analysis:
     #   divided by
     #
     def ratio(self, ratio_data):
-        self.data_adjusted = np.divide(
-            self.data_adjusted,
-            ratio_data
-            )
+        if np.prod(self.data_adjusted.shape) == np.prod(ratio_data.shape):
+            self.data_adjusted = np.divide( 
+                self.data_adjusted,
+                ratio_data
+                )
 

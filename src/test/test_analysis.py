@@ -132,6 +132,26 @@ class AnalysisTesting(unittest.TestCase):
             self.assertLessEqual(value, 1)
             i += 1
 
+    ## Test the ratio function:
+    #   - Make sure that the division works correctly
+    #   - Ensure the data remains unchanged if the size of the divisor is not
+    #       equal to the size of the dividend
+    def test_ratio(self):
+        ratio_array = np.linspace(3,3,500)
+        self.analysis_obj.ratio(ratio_array)
+
+        for value,rat in zip(self.analysis_obj.data_raw.tolist(),\
+                            self.analysis_obj.data_adjusted.tolist()):
+            self.assertAlmostEqual(value/3.0, rat)
+
+        self.analysis_obj.reset()
+        ratio_array = np.linspace(3,3,100)
+        self.analysis_obj.ratio(ratio_array)
+
+        for value,orig in zip(self.analysis_obj.data_adjusted.tolist(),
+                            self.analysis_obj.data_raw.tolist()):
+            self.assertEqual(value,orig)
+
         
 if __name__ == '__main__':
     unittest.main()
