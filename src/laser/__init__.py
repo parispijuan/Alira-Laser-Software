@@ -323,26 +323,6 @@ class Laser_Driver:
         self.wavelength = stop
         sys.stderr.write("Wavelength scan has been successfully performed.\n")
 
-    ## @brief Performs a continuous sweep over wavelengths.
-    #
-    #   Provides continuous sweeping functionality for the wavelength using the
-    #   built-in SDK functions. No other parameters offer functions like this,
-    #   as they definitively set their respective values.
-    #  @param start Wavelength to begin the sweep at.
-    #  @param stop Wavelength to cease the sweep at.
-    #  @param speed Speed of the sweep in supplied wavelength units per second.
-    #  @exception Laser_Exception Thrown if wave_sweep does not correctly perform the wavelength sweep.
-    def wave_sweep(self, start, stop, speed):
-        units = self.qcl_wvlen_units
-        try:
-            write = c_bool(True)
-            self.sdk.SidekickSDK_SetSweepParams(self.handle, c_uint8(units), c_float(start), c_float(stop),
-                                c_float(speed), self.scan_count, self.pref_qcl, self.bidirectional_scans)
-            self.sdk.SidekickSDK_ReadWriteSweepParams(self.handle, write)
-        except:
-            raise Laser_Exception("Wavelength sweep was not correctly performed.")
-        self.wavelength = stop
-        sys.stderr.write("Wavelength sweep has concluded successfully.\n")
 
     ## @brief Set pulse width of the laser emission to value.
     #
