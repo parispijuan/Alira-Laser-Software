@@ -344,39 +344,6 @@ class Laser_Driver:
         self.wavelength = stop
         sys.stderr.write("Wavelength sweep has concluded successfully.\n")
 
-    ## @brief Perform a scan over the given qcl parameter.
-    #
-    #  Scans from start to stop by step_size for the given qcl parameter
-    #  (current, pulsewidth, pulserate), dwelling for a specified time at each.
-    #  @param param Key within params dictionary of desired QCL parameter.
-    #         options are: current (mA)> current_ma_ptr/
-    #                     pulserate (Hz)> pulse_rate_hz_ptr/
-    #                     pulsewidth (Ns)> pulse_width_ns_ptr
-    #  @param start Beginning value of the scan for the QCL parameter.
-    #  @param stop Ending value of the scan for the QCL parameter.
-    #  @param step_size Step change quantity for the scan.
-    #  @param dwell_time Time spent at each increment (in seconds)
-    def qcl_param_step(self, param, start, stop, step_size, dwell_time):
-        # Set initial value and wait before stepping.
-        qcl_params = self.__read_qcl_params()
-        qcl_params[param] = start
-        self.__update_qcl_params(qcl_params)
-        time.sleep(5)
-
-        set_val = start + step_size
-        while set_val < stop:
-            qcl_params[param] = set_val
-            self.__update_qcl_params(qcl_params)
-            set_val += step_size
-
-        if(param == 'current_ma_ptr'):
-            self.qcl_current_ma = stop
-        elif(param == 'pulse_rate_hz_ptr'):
-            self.qcl_pulse_rate_hz = stop
-        else:
-            self.qcl_pulse_width_ns = stop
-
-
     ## @brief Set pulse width of the laser emission to value.
     #
     #  @param value Desired pulsewidth value in ns.
