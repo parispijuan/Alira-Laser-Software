@@ -19,7 +19,6 @@ class AnalysisTesting(unittest.TestCase):
         self.analysis_obj = analysis.Analysis(test_data)
         self.integrate_obj = analysis.Analysis(test_integrate_data)
 
-
     ## Test the constructor:
     #   @param self Pointer to the `AnalysisTesting` object
     #   - Assert that the type of the object is `Analysis`.
@@ -60,7 +59,7 @@ class AnalysisTesting(unittest.TestCase):
         self.analysis_obj.differentiate()
 
         for value in self.analysis_obj.data_adjusted.tolist():
-            self.assertAlmostEqual(value, 1) # default is 7 places
+            self.assertAlmostEqual(value, 1) 
 
 
         self.analysis_obj.reset()
@@ -126,13 +125,12 @@ class AnalysisTesting(unittest.TestCase):
     #   - The values should all be less than one, so assert this and check
     def test_normalize(self):
         self.analysis_obj.normalize()
-
+        
         i = 0
         for value in self.analysis_obj.data_adjusted.tolist():
             self.assertEqual(value, self.analysis_obj.data_raw[i]/10.5)
             self.assertLessEqual(value, 1)
             i += 1
-
 
         
 if __name__ == '__main__':
