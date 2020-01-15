@@ -54,7 +54,10 @@ def reset_for_testing():
 class Laser:
     ##@brief Initialize SDKs and provide hook for testing.
     #
-    # Constructor for the driver object. Links with driver C library and SDK to control hardware.
+    #        Constructor for the driver object. Links with driver C library and SDK to
+    #        control hardware. Sets numerous constants required for interaction
+    #        with the lock-in and qcl. Initializes laser operation and data
+    #        collection upon instantiation.
     #
     # @param testing_sdk SideKickSDK library if None, else class with equivalent methods for testing.
     # @param testing_zisdk ZI library if None, else class with equivalent methods for testing.
@@ -95,21 +98,22 @@ class Laser:
 
 
         ## @name Laser_State
-        # State of all variable laser parameters.
+        # State of all variable laser parameters. Initialized to default, safe
+        # experiment values.
         # @{
 
         ## Whether or not the laser is on.
         self.laser_on = False
         ## Current from the QCL in MilliAmps.
-        self.qcl_current_ma = 0
+        self.qcl_current_ma = 1500
         ## Pulse rate of the laser in Hertz according to the QCL.
-        self.qcl_pulse_rate_hz = 0
+        self.qcl_pulse_rate_hz = 15000
         ## Pulse width of the laser in nanoseconds according to the QCL.
-        self.qcl_pulse_width_ns = 0
+        self.qcl_pulse_width_ns = 500
         ## Laser wavelength in the units specified by the next parameter.
-        self.wavelength = 0
+        self.wavelength = 1020
         ## Wavelength units, as specified by an integer corresponding to each type of unit.
-        self.qcl_wvlen_units = 0
+        self.qcl_wvlen_units = 2
         ## QCL temperature, kept constant. In Degrees Celsius.
         self.qcl_temp = 17
 
@@ -191,11 +195,20 @@ class Laser:
 
         ## Thread object for collecting data when the laser is in operation.
         self.poll_thread = None
+
+        ## Array into which data observed from the sensor is written.
         self.data = []
+
+        ## Array into which time data corresponding to observation data is stored.
         self.time_axis = []
+
         self.startup(1020, 1500, 500, 15000)
 
-    ## @brief Attempts to start the laser with the given system parameters.
+    ## @brief Begins laser operation within the context of an experiment.
+    #
+    #         Attempts to start the laser with the given system parameters, and
+    #         begins parallel data collection thread which runs throughout the
+    #         duration of laser operation time.
     #
     #  @param wave Wavelength, units specified by waveunit.
     #  @param current QCL current in MilliAmps.
@@ -294,8 +307,20 @@ class Laser:
     ## @brief Set the given parameter, which is  defined to be one of  four strings.
     #
     #         Sets the laser parameter determined by field name, but first
-    #         sanity checks on the values input.
+    #         sanity checks on the value's input. Units of set fields MUST be
+    #         those taken by the QCL. Current values should be in mA, pulse pulse
+    #         width should be in ns, pulse rate should be in Hz, and wavelength
+    #         should be in wave numbers.
+    #
     #  @param value Wavelength value to which the laser will be tuned.
+    #
+    #         Example: The following short script makes use of a Laser instantiation
+    #         known as laser_obj to set the current to 1250 mA, which is within
+    #         the safe operation bounds.
+    #
+    #         laser_obj = Laser()
+    #         laser_obj.set_field("current", 1250)
+    #
     def set_field(self, field_name, value):
         if(field_name == "pulse_width" and value <= 2500 and value >= 500):
             self.set_pulsewidth(value)
@@ -462,7 +487,13 @@ class Laser:
         self.daq.sync()
         time.sleep(10 * self.lockin_time_constant)
 
-    ## @brief Turn off and disconnect from laser.
+    ## @brief Perform all necessary action for the turning off of the laser.
+    #
+    #         As the laser has ceased operation, it no longer needs to be collecting
+    #         data. So, cease the parallel collection thread and output all data
+    #         to a .csv file for processing. This is all done before the laser is
+    #         turned off to ensure uninterrupted data. Finally, turn off and
+    #         disconnect from laser and the SDK.
     def turn_off_laser(self):
         # As the laser is not firing, stop collecting data.
         self.poll_thread.join()
@@ -508,9 +539,10 @@ class Laser:
 
     ## @brief Collects observed laser emission data.
     #
-    #   Function for gathering data from detector via lock-in amp. Appends
-    #   data collected (1D list), time axis (1D list), standard
-    #   deviation (1D list) to arguments
+    #         Function for gathering data from detector via lock-in amp. Appends
+    #         data collected (1D list), time axis (1D list), standard
+    #         deviation (1D list) to arguments
+    #
     #  @param data_list List object to which the data is appended.
     #  @param time_list List object to which the time series for the data is appended.
     #  @returns 2 numpy arrays, first the observed data and second the corresponding time series.
