@@ -112,7 +112,7 @@ class Laser:
         self.qcl_pulse_width_ns = 500
         ## Laser wavelength in the units specified by the next parameter.
         self.wavelength = 1020
-        ## Wavelength units, as specified by an integer corresponding to each type of unit.
+        ## Wavelength units, defaults to 2, which cooresponds to wavenumber.
         self.qcl_wvlen_units = 2
         ## QCL temperature, kept constant. In Degrees Celsius.
         self.qcl_temp = 17
@@ -225,30 +225,20 @@ class Laser:
         ## Array into which time data corresponding to observation data is stored.
         self.time_axis = []
 
-        self.startup(1020, 1500, 500, 15000)
+        self.__startup()
 
     ## @brief Begins laser operation within the context of an experiment.
     #
-    #         Attempts to start the laser with the given system parameters, and
+    #         Attempts to start the laser with the initial system parameters, and
     #         begins parallel data collection thread which runs throughout the
     #         duration of laser operation time.
     #
-    #  @param wave Wavelength, units specified by waveunit.
-    #  @param current QCL current in MilliAmps.
-    #  @param pulsewid Pulse width in Nanoseconds.
-    #  @param pulserate Pulse rate in Hz.
-    #  @param waveunit Integer specifying unit for wavelength. Defaults to 2: wavenumber.
     #  @exception QCL_Exception Thrown if errors arrise in this portion of the process.
     #  @exception Laser_Exception Thrown if errors arrise in this portion of the process.
     #  @exception SDK_Exception Thrown if errors arrise in this portion of the process.
-    def startup(self, wave, current, pulsewid, pulserate, waveunit = 2):
-        # Set all system parameters to the desired initial values
-        self.wavelength = wave
-        self.qcl_wvlen_units = waveunit
-        self.qcl_current_ma = current
-        self.qcl_pulse_width_ns = pulsewid
-        self.qcl_pulse_rate_hz = pulserate
-        # Begin firing the physical system
+    def __startup(self, wave, current, pulsewid, pulserate, waveunit = 2):
+
+        # Begin firing the physical system with the initial parameter conditions.
         try:
             self.__connect_laser()
             self.__arm_laser()
