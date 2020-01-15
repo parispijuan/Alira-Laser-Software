@@ -195,17 +195,6 @@ class Laser:
         self.time_axis = []
         self.startup(1020, 1500, 500, 15000)
 
-
-    ## @Brief  Function for ensuring that the laser is disconnected when
-    #
-    #          Ensures that the laser is disconnected and powered off if the
-    #          calling class as forgotten to ensure that this happens.
-    def __del__(self):
-        self.poll_thread.join()
-        data = np.stack([np.array(self.data), np.array(self.time_axis)])
-        np.savetxt("Data.csv", data, delimiter = ",")
-        self.turn_off_laser()
-
     ## @brief Attempts to start the laser with the given system parameters.
     #
     #  @param wave Wavelength, units specified by waveunit.
@@ -484,6 +473,12 @@ class Laser:
         self.sdk.SidekickSDK_Disconnect(self.handle)
         sys.stderr.write("Laser has been turned off.\n")
 
+        # As the laser is not firing, stop collecting data.
+        self.poll_thread.join()
+        data = np.stack([np.array(self.data), np.array(self.time_axis)])
+        np.savetxt("Data.csv", data, delimiter = ",")
+
+
     ## @brief Read QCL parameters into dictionary.
     #
     #  @returns Dictionary of QCL parameter pointer.
@@ -539,8 +534,8 @@ class Laser:
             data = []
             time_axis = []
         self.daq.unsubscribe('*')
-        data_list.append(data)
-        time_list.append(time_axis)
+        data_list += data
+        time_list += time_axis
 
     ## @brief Call SDK function with optional arguments and check return value.
     #
