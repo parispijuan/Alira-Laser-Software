@@ -11,6 +11,9 @@ class Testing(unittest.TestCase):
         def set_field(self, field_name, value):
           self.results = {field_name:value}
 
+        def turn_off_laser(self):
+          return
+
       laser.set_for_test(Laser())
 
       class CustomWavelengthAction(WavelengthAction):
@@ -36,6 +39,9 @@ class Testing(unittest.TestCase):
         results = None
         def set_field(self, field_name, value):
           self.results = {field_name:value}
+
+        def turn_off_laser(self):
+          return
 
       laser.set_for_test(Laser())
 
