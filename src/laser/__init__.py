@@ -357,7 +357,7 @@ class Laser:
 
         elif(field_name == "wavelength" and
             value <= self.max_wavelength and value >= self.min_wavelength):
-            self.set_wavlength(value)
+            self.__set_wavlength(value)
 
         elif(field_name == "current" and
             value <= self.max_current and value >= self.min_current):
@@ -370,7 +370,7 @@ class Laser:
     ## @brief Set wavelength for the laser emission in units stored by the object.
     #
     #  @param value Wavelength value to which the laser will be tuned.
-    def set_wavelength(self, value):
+    def __set_wavelength(self, value):
         units = self.qcl_wvlen_units
         self.wavelength = value
         set_ptr = pointer(c_bool(True))
