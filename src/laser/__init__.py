@@ -54,7 +54,10 @@ def reset_for_testing():
 class Laser:
     ##@brief Initialize SDKs and provide hook for testing.
     #
-    # Constructor for the driver object. Links with driver C library and SDK to control hardware.
+    #        Constructor for the driver object. Links with driver C library and SDK to
+    #        control hardware. Sets numerous constants required for interaction
+    #        with the lock-in and qcl. Initializes laser operation and data
+    #        collection upon instantiation.
     #
     # @param testing_sdk SideKickSDK library if None, else class with equivalent methods for testing.
     # @param testing_zisdk ZI library if None, else class with equivalent methods for testing.
@@ -95,21 +98,22 @@ class Laser:
 
 
         ## @name Laser_State
-        # State of all variable laser parameters.
+        # State of all variable laser parameters. Initialized to default, safe
+        # experiment values.
         # @{
 
         ## Whether or not the laser is on.
         self.laser_on = False
         ## Current from the QCL in MilliAmps.
-        self.qcl_current_ma = 0
+        self.qcl_current_ma = 1500
         ## Pulse rate of the laser in Hertz according to the QCL.
-        self.qcl_pulse_rate_hz = 0
+        self.qcl_pulse_rate_hz = 15000
         ## Pulse width of the laser in nanoseconds according to the QCL.
-        self.qcl_pulse_width_ns = 0
+        self.qcl_pulse_width_ns = 500
         ## Laser wavelength in the units specified by the next parameter.
-        self.wavelength = 0
-        ## Wavelength units, as specified by an integer corresponding to each type of unit.
-        self.qcl_wvlen_units = 0
+        self.wavelength = 1020
+        ## Wavelength units, defaults to 2, which cooresponds to wavenumber.
+        self.qcl_wvlen_units = 2
         ## QCL temperature, kept constant. In Degrees Celsius.
         self.qcl_temp = 17
 
@@ -168,6 +172,29 @@ class Laser:
 
         #@}
 
+        ## @name Parameter_Bounds
+        #  Stores safe operating constraints for all manipulated parameters.
+        #@{
+
+        ## Maximum safe current in mA for operation of this laser.
+        self.max_current = 1600
+        ## Minimum safe current in mA for operation of this laser.
+        self.min_current = 1200
+        ## Maximum wavelength (in wavenumbers) able to be reached by this laser.
+        self.max_wavelength = 1250
+        ## Minimum wavelength (in wavenumbers) able to be reached by this laser.
+        self.min_wavelength = 950
+        ## Maximum pulse rate in Hz that this laser can safely operate at.
+        self.max_pulse_rate = 15000
+        ## Minimum pulse rate in Hz that this laser can safely operate at.
+        self.min_pulse_rate = 5000
+        ## Maximum pulse width in ns for safe operation of the laser.
+        self.max_pulse_width = 2500
+        ## Minimum pulse width in ns for safe operation of the laser.
+        self.min_pulse_width = 500
+
+        #@}
+
         ## @name Set_Parameter_Constants
         # Constants required for setting laser parameters.
         #@{
@@ -191,28 +218,27 @@ class Laser:
 
         ## Thread object for collecting data when the laser is in operation.
         self.poll_thread = None
-        self.data = []
-        self.time_axis = []
-        self.startup(1020, 1500, 500, 15000)
 
-    ## @brief Attempts to start the laser with the given system parameters.
+        ## Array into which data observed from the sensor is written.
+        self.data = []
+
+        ## Array into which time data corresponding to observation data is stored.
+        self.time_axis = []
+
+        self.__startup()
+
+    ## @brief Begins laser operation within the context of an experiment.
     #
-    #  @param wave Wavelength, units specified by waveunit.
-    #  @param current QCL current in MilliAmps.
-    #  @param pulsewid Pulse width in Nanoseconds.
-    #  @param pulserate Pulse rate in Hz.
-    #  @param waveunit Integer specifying unit for wavelength. Defaults to 2: wavenumber.
+    #         Attempts to start the laser with the initial system parameters, and
+    #         begins parallel data collection thread which runs throughout the
+    #         duration of laser operation time.
+    #
     #  @exception QCL_Exception Thrown if errors arrise in this portion of the process.
     #  @exception Laser_Exception Thrown if errors arrise in this portion of the process.
     #  @exception SDK_Exception Thrown if errors arrise in this portion of the process.
-    def startup(self, wave, current, pulsewid, pulserate, waveunit = 2):
-        # Set all system parameters to the desired initial values
-        self.wavelength = wave
-        self.qcl_wvlen_units = waveunit
-        self.qcl_current_ma = current
-        self.qcl_pulse_width_ns = pulsewid
-        self.qcl_pulse_rate_hz = pulserate
-        # Begin firing the physical system
+    def __startup(self, wave, current, pulsewid, pulserate, waveunit = 2):
+
+        # Begin firing the physical system with the initial parameter conditions.
         try:
             self.__connect_laser()
             self.__arm_laser()
@@ -221,7 +247,7 @@ class Laser:
             self.__turn_on_laser()
             self.__connect_to_lockin()
             self.__initialize_lockin()
-            self.poll_thread = Thread(target=self.collect_data, args=(self.data, self.time_axis), name="poll_thread")
+            self.poll_thread = Thread(target=self.__collect_data, args=(self.data, self.time_axis), name="poll_thread")
             self.poll_thread.start()
         except:
             e = sys.exc_info()[0]
@@ -294,55 +320,55 @@ class Laser:
     ## @brief Set the given parameter, which is  defined to be one of  four strings.
     #
     #         Sets the laser parameter determined by field name, but first
-    #         sanity checks on the values input.
+    #         sanity checks on the value's input. Units of set fields MUST be
+    #         those taken by the QCL. Current values should be in mA, pulse pulse
+    #         width should be in ns, pulse rate should be in Hz, and wavelength
+    #         should be in wave numbers.
+    #
     #  @param value Wavelength value to which the laser will be tuned.
+    #
+    #         Example: The following short script makes use of a Laser instantiation
+    #         known as laser_obj to set the current to 1250 mA, which is within
+    #         the safe operation bounds.
+    #
+    #         laser_obj = Laser()
+    #         laser_obj.set_field("current", 1250)
+    #
     def set_field(self, field_name, value):
-        if(field_name == "pulse_width" and value <= 2500 and value >= 500):
-            self.set_pulsewidth(value)
-        elif(field_name == "pulse_rate" and value <= 15000 and value >= 5000):
-            self.set_pulserate(value)
-        elif(field_name == "wavelength" and value <= 1250 and value >= 950):
-            self.set_wavlength(value)
-        elif(field_name == "current" and value <= 1600 and value >= 1200):
-            self.set_current(value)
+        if(field_name == "pulse_width" and
+            value <= self.max_pulse_width and value >= self.min_pulse_width):
+            self.qcl_pulse_width_ns = value
+            self.__set_qcl_params()
+
+        elif(field_name == "pulse_rate" and
+            value <= self.max_pulse_rate and value >= self.min_pulse_rate):
+            self.qcl_pulse_rate_hz = value
+            self.__set_qcl_params()
+
+        elif(field_name == "wavelength" and
+            value <= self.max_wavelength and value >= self.min_wavelength):
+            self.__set_wavelength(value)
+
+        elif(field_name == "current" and
+            value <= self.max_current and value >= self.min_current):
+            self.qcl_current_ma = value
+            self.__set_qcl_params()
+
         else:
             raise Laser_Exception("This is not a valid parameter set.")
 
     ## @brief Set wavelength for the laser emission in units stored by the object.
     #
     #  @param value Wavelength value to which the laser will be tuned.
-    def set_wavelength(self, value):
+    def __set_wavelength(self, value):
         units = self.qcl_wvlen_units
         self.wavelength = value
         set_ptr = pointer(c_bool(True))
-        self.sdk.SidekickSDK_SetTuneToWW(self.handle, c_uint8(2), c_float(value), c_uint8(0))
+        self.sdk.SidekickSDK_SetTuneToWW(self.handle, c_uint8(units),
+                                        c_float(value), self.pref_qcl)
         self.sdk.SidekickSDK_ExecTuneToWW(self.handle)
         time.sleep(5)
         sys.stderr.write("Laser wavelength tuning to desired value.\n")
-
-    ## @brief Set pulse width of the laser emission to value.
-    #
-    #  @param value Desired pulsewidth value in ns.
-    #  @exception QCL_Exception Thrown if set_pulsewidth doesn't set the parameter within the required time.
-    def set_pulsewidth(self, value):
-        self.qcl_pulse_width_ns = value
-        self.__set_qcl_params()
-
-    ## @brief Set pulse rate of the laser emission to value.
-    #
-    #  @param value Desired pulse rate in Hz.
-    #  @exception QCL_Exception Thrown if set_pulserate doesn't set the parameter within the required time.
-    def set_pulserate(self, value):
-        self.qcl_pulse_rate_hz = value
-        self.__set_qcl_params()
-
-    ## @brief Set current for the laser emission.
-    #
-    #  @param value Desired current in mA.
-    #  @exception QCL_Exception Thrown if set_pulserate doesn't set the parameter within the required time.
-    def set_current(self, value):
-        self.qcl_current_ma = value
-        self.__set_qcl_params()
 
     ## @brief Wait for TECs to cool to correct temp.
     #
@@ -462,7 +488,13 @@ class Laser:
         self.daq.sync()
         time.sleep(10 * self.lockin_time_constant)
 
-    ## @brief Turn off and disconnect from laser.
+    ## @brief Perform all necessary action for the turning off of the laser.
+    #
+    #         As the laser has ceased operation, it no longer needs to be collecting
+    #         data. So, cease the parallel collection thread and output all data
+    #         to a .csv file for processing. This is all done before the laser is
+    #         turned off to ensure uninterrupted data. Finally, turn off and
+    #         disconnect from laser and the SDK.
     def turn_off_laser(self):
         # As the laser is not firing, stop collecting data.
         self.poll_thread.join()
@@ -508,13 +540,14 @@ class Laser:
 
     ## @brief Collects observed laser emission data.
     #
-    #   Function for gathering data from detector via lock-in amp. Appends
-    #   data collected (1D list), time axis (1D list), standard
-    #   deviation (1D list) to arguments
+    #         Function for gathering data from detector via lock-in amp. Appends
+    #         data collected (1D list), time axis (1D list), standard
+    #         deviation (1D list) to arguments
+    #
     #  @param data_list List object to which the data is appended.
     #  @param time_list List object to which the time series for the data is appended.
     #  @returns 2 numpy arrays, first the observed data and second the corresponding time series.
-    def collect_data(self, data_list, time_list):
+    def __collect_data(self, data_list, time_list):
         self.daq.sync()
         self.daq.subscribe('/' + self.device + '/demods/' + self.lockin_demod_c + '/sample')
         poll_data = self.daq.poll(self.lockin_poll_length, self.poll_timeout)
