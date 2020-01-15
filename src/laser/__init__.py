@@ -257,7 +257,7 @@ class Laser:
             self.__turn_on_laser()
             self.__connect_to_lockin()
             self.__initialize_lockin()
-            self.poll_thread = Thread(target=self.collect_data, args=(self.data, self.time_axis), name="poll_thread")
+            self.poll_thread = Thread(target=self.__collect_data, args=(self.data, self.time_axis), name="poll_thread")
             self.poll_thread.start()
         except:
             e = sys.exc_info()[0]
@@ -357,7 +357,7 @@ class Laser:
 
         elif(field_name == "wavelength" and
             value <= self.max_wavelength and value >= self.min_wavelength):
-            self.__set_wavlength(value)
+            self.__set_wavelength(value)
 
         elif(field_name == "current" and
             value <= self.max_current and value >= self.min_current):
@@ -557,7 +557,7 @@ class Laser:
     #  @param data_list List object to which the data is appended.
     #  @param time_list List object to which the time series for the data is appended.
     #  @returns 2 numpy arrays, first the observed data and second the corresponding time series.
-    def collect_data(self, data_list, time_list):
+    def __collect_data(self, data_list, time_list):
         self.daq.sync()
         self.daq.subscribe('/' + self.device + '/demods/' + self.lockin_demod_c + '/sample')
         poll_data = self.daq.poll(self.lockin_poll_length, self.poll_timeout)
