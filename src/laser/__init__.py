@@ -464,6 +464,11 @@ class Laser:
 
     ## @brief Turn off and disconnect from laser.
     def turn_off_laser(self):
+        # As the laser is not firing, stop collecting data.
+        self.poll_thread.join()
+        data = np.stack([np.array(self.data[0]), np.array(self.time_axis[0])])
+        np.savetxt("Data.csv", data, delimiter = ",")
+
         turn_on = False
         arm = False
         self.sdk.SidekickSDK_SetLaserOnOff(self.handle, 0, turn_on)
@@ -472,11 +477,6 @@ class Laser:
         self.sdk.SidekickSDK_ExecLaserArmDisarm(self.handle)
         self.sdk.SidekickSDK_Disconnect(self.handle)
         sys.stderr.write("Laser has been turned off.\n")
-
-        # As the laser is not firing, stop collecting data.
-        self.poll_thread.join()
-        data = np.stack([np.array(self.data), np.array(self.time_axis)])
-        np.savetxt("Data.csv", data, delimiter = ",")
 
 
     ## @brief Read QCL parameters into dictionary.
@@ -534,8 +534,8 @@ class Laser:
             data = []
             time_axis = []
         self.daq.unsubscribe('*')
-        data_list = data
-        time_list = time_axis
+        data_list.append(data)
+        time_list.append(time_axis)
 
     ## @brief Call SDK function with optional arguments and check return value.
     #
