@@ -103,6 +103,6 @@ class Experiment:
       for action in self._actions:
         action.run_wrapper(self._current_time)
 
-    EndAction().run_wrapper()
+    EndAction().run()
 
     return True
