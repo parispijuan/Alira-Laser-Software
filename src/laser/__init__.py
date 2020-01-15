@@ -539,7 +539,8 @@ class Laser:
             data = []
             time_axis = []
         self.daq.unsubscribe('*')
-        return np.array(data), np.array(time_axis)
+        data_list.append(data)
+        time_list.append(time_axis)
 
     ## @brief Call SDK function with optional arguments and check return value.
     #
