@@ -172,6 +172,29 @@ class Laser:
 
         #@}
 
+        ## @name Parameter_Bounds
+        #  Stores safe operating constraints for all manipulated parameters.
+        #@{
+
+        ## Maximum safe current in mA for operation of this laser.
+        self.max_current = 1600
+        ## Minimum safe current in mA for operation of this laser.
+        self.min_current = 1200
+        ## Maximum wavelength (in wavenumbers) able to be reached by this laser.
+        self.max_wavelength = 1250
+        ## Minimum wavelength (in wavenumbers) able to be reached by this laser.
+        self.min_wavelength = 950
+        ## Maximum pulse rate in Hz that this laser can safely operate at.
+        self.max_pulse_rate = 15000
+        ## Minimum pulse rate in Hz that this laser can safely operate at.
+        self.min_pulse_rate = 5000
+        ## Maximum pulse width in ns for safe operation of the laser.
+        self.max_pulse_width = 2500
+        ## Minimum pulse width in ns for safe operation of the laser.
+        self.min_pulse_width = 500
+
+        #@}
+
         ## @name Set_Parameter_Constants
         # Constants required for setting laser parameters.
         #@{
@@ -322,14 +345,22 @@ class Laser:
     #         laser_obj.set_field("current", 1250)
     #
     def set_field(self, field_name, value):
-        if(field_name == "pulse_width" and value <= 2500 and value >= 500):
+        if(field_name == "pulse_width" and
+            value <= self.max_pulse_width and value >= self.min_pulse_width):
             self.set_pulsewidth(value)
-        elif(field_name == "pulse_rate" and value <= 15000 and value >= 5000):
+
+        elif(field_name == "pulse_rate" and
+            value <= self.max_pulse_rate and value >= self.min_pulse_rate):
             self.set_pulserate(value)
-        elif(field_name == "wavelength" and value <= 1250 and value >= 950):
+
+        elif(field_name == "wavelength" and
+            value <= self.max_wavelength and value >= self.min_wavelength):
             self.set_wavlength(value)
-        elif(field_name == "current" and value <= 1600 and value >= 1200):
+
+        elif(field_name == "current" and
+            value <= self.max_current and value >= self.min_current):
             self.set_current(value)
+
         else:
             raise Laser_Exception("This is not a valid parameter set.")
 
