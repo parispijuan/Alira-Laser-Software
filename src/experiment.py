@@ -1,4 +1,4 @@
-from action import PulseWidthAction, PulseRateAction, WavelengthAction, CurrentAction
+from action import PulseWidthAction, PulseRateAction, WavelengthAction, CurrentAction, EndAction
 
 ##
 # The Experiment class follows a builder design parameter. It
@@ -102,5 +102,7 @@ class Experiment:
       time.sleep(1)
       for action in self._actions:
         action.run_wrapper(self._current_time)
+
+    EndAction().run()
 
     return True

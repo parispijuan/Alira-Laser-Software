@@ -26,6 +26,15 @@ class Action(ABC):
     return
 
 ##
+# The EndAction class is what is used by the experiment class
+# to turnoff the laser
+
+class EndAction:
+  def run(self):
+    laser.get().turn_off_laser()
+    return
+
+##
 # The PulseWidthAction class is what should be subclassed
 # by actions that wish to alter the pulse width of the laser.
 # The user simply defines run(self, current_time) which should
@@ -108,4 +117,3 @@ class WavelengthAction(Action):
 class CurrentAction(Action):
   def __init__(self):
     super().__init__('current')
-    
