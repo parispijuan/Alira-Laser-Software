@@ -534,8 +534,8 @@ class Laser:
             data = []
             time_axis = []
         self.daq.unsubscribe('*')
-        data_list += data
-        time_list += time_axis
+        data_list = data
+        time_list = time_axis
 
     ## @brief Call SDK function with optional arguments and check return value.
     #
