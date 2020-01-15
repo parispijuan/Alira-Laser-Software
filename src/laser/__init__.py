@@ -347,11 +347,13 @@ class Laser:
     def set_field(self, field_name, value):
         if(field_name == "pulse_width" and
             value <= self.max_pulse_width and value >= self.min_pulse_width):
-            self.set_pulsewidth(value)
+            self.qcl_pulse_width_ns = value
+            self.__set_qcl_params()
 
         elif(field_name == "pulse_rate" and
             value <= self.max_pulse_rate and value >= self.min_pulse_rate):
-            self.set_pulserate(value)
+            self.qcl_pulse_rate_hz = value
+            self.__set_qcl_params()
 
         elif(field_name == "wavelength" and
             value <= self.max_wavelength and value >= self.min_wavelength):
@@ -359,7 +361,8 @@ class Laser:
 
         elif(field_name == "current" and
             value <= self.max_current and value >= self.min_current):
-            self.set_current(value)
+            self.qcl_current_ma = value
+            self.__set_qcl_params()
 
         else:
             raise Laser_Exception("This is not a valid parameter set.")
@@ -371,34 +374,11 @@ class Laser:
         units = self.qcl_wvlen_units
         self.wavelength = value
         set_ptr = pointer(c_bool(True))
-        self.sdk.SidekickSDK_SetTuneToWW(self.handle, c_uint8(2), c_float(value), c_uint8(0))
+        self.sdk.SidekickSDK_SetTuneToWW(self.handle, c_uint8(units),
+                                        c_float(value), self.pref_qcl)
         self.sdk.SidekickSDK_ExecTuneToWW(self.handle)
         time.sleep(5)
         sys.stderr.write("Laser wavelength tuning to desired value.\n")
-
-    ## @brief Set pulse width of the laser emission to value.
-    #
-    #  @param value Desired pulsewidth value in ns.
-    #  @exception QCL_Exception Thrown if set_pulsewidth doesn't set the parameter within the required time.
-    def set_pulsewidth(self, value):
-        self.qcl_pulse_width_ns = value
-        self.__set_qcl_params()
-
-    ## @brief Set pulse rate of the laser emission to value.
-    #
-    #  @param value Desired pulse rate in Hz.
-    #  @exception QCL_Exception Thrown if set_pulserate doesn't set the parameter within the required time.
-    def set_pulserate(self, value):
-        self.qcl_pulse_rate_hz = value
-        self.__set_qcl_params()
-
-    ## @brief Set current for the laser emission.
-    #
-    #  @param value Desired current in mA.
-    #  @exception QCL_Exception Thrown if set_pulserate doesn't set the parameter within the required time.
-    def set_current(self, value):
-        self.qcl_current_ma = value
-        self.__set_qcl_params()
 
     ## @brief Wait for TECs to cool to correct temp.
     #
