@@ -236,7 +236,7 @@ class Laser:
     #  @exception QCL_Exception Thrown if errors arrise in this portion of the process.
     #  @exception Laser_Exception Thrown if errors arrise in this portion of the process.
     #  @exception SDK_Exception Thrown if errors arrise in this portion of the process.
-    def __startup(self, wave, current, pulsewid, pulserate, waveunit = 2):
+    def __startup():
 
         # Begin firing the physical system with the initial parameter conditions.
         try:
